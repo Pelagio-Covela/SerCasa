@@ -1,4 +1,4 @@
-import { useParams, useSearchParams } from "react-router";
+import { useParams, useSearchParams } from "react-router-dom";
 import { ProfessionalCard } from "../components/ProfessionalCard";
 import { professionals, categories } from "../data/professionals";
 import { Calendar, Clock, MapPin, Filter, SlidersHorizontal } from "lucide-react";

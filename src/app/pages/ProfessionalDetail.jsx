@@ -1,4 +1,4 @@
-import { useParams, useNavigate, useSearchParams } from "react-router";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { professionals, categories } from "../data/professionals";
 import { Star, DollarSign, Calendar, Clock, MapPin, Phone, Mail, Award } from "lucide-react";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";

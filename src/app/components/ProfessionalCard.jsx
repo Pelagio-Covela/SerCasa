@@ -1,5 +1,5 @@
 import { Star, DollarSign } from "lucide-react";
-import { Link, useSearchParams } from "react-router";
+import { Link, useSearchParams } from "react-router-dom";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 
 export function ProfessionalCard({ professional }) {

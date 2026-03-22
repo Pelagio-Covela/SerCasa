@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useParams, useNavigate } from "react-router";
+import { useParams, useNavigate } from "react-router-dom";
 import { categories } from "../data/professionals";
 import { Calendar, Clock, MapPin, ArrowRight } from "lucide-react";
 

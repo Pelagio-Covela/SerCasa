@@ -1,5 +1,5 @@
 import { Home, Droplet, ChefHat, Leaf, Zap, ChevronRight } from "lucide-react";
-import { Link } from "react-router";
+import { Link } from "react-router-dom";
 
 const iconMap = {
   home: Home,
