@@ -1,6 +1,6 @@
 import { Target, Heart, Users, Award, TrendingUp, Shield } from "lucide-react";
 
-export function About() {
+export function Sobre() {
   return (
     <div className="min-h-screen bg-white">
       {/* Hero Section */}
@@ -8,8 +8,8 @@ export function About() {
         <div className="max-w-7xl mx-auto px-4">
           <h1 className="text-5xl font-bold mb-6">Sobre a ServCasa</h1>
           <p className="text-xl text-blue-100 max-w-3xl">
-            Transformamos a forma como os moçambicanos encontram e contratam serviços domiciliares, 
-            conectando clientes a profissionais qualificados com segurança e praticidade.
+            Transformamos a forma como os moçambicanos encontram e contratam serviços domiciliários,
+            ligando clientes a profissionais qualificados com segurança e praticidade.
           </p>
         </div>
       </section>
@@ -22,10 +22,10 @@ export function About() {
               <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
                 <Target className="w-10 h-10 text-blue-600" />
               </div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">Nossa Missão</h2>
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">A Nossa Missão</h2>
               <p className="text-gray-600 leading-relaxed">
-                Facilitar a vida das pessoas conectando-as aos melhores profissionais de 
-                serviços domiciliares, garantindo qualidade, segurança e confiabilidade em 
+                Facilitar a vida das pessoas, ligando-as aos melhores profissionais de
+                serviços domiciliários, garantindo qualidade, segurança e confiança em
                 cada contratação.
               </p>
             </div>
@@ -34,10 +34,10 @@ export function About() {
               <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
                 <TrendingUp className="w-10 h-10 text-green-600" />
               </div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">Nossa Visão</h2>
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">A Nossa Visão</h2>
               <p className="text-gray-600 leading-relaxed">
-                Ser a plataforma líder em serviços domiciliares em Moçambique, reconhecida pela 
-                excelência no atendimento, inovação tecnológica e compromisso com a satisfação 
+                Ser a plataforma líder em serviços domiciliários em Moçambique, reconhecida pela
+                excelência no atendimento, inovação tecnológica e compromisso com a satisfação
                 de clientes e profissionais.
               </p>
             </div>
@@ -46,9 +46,9 @@ export function About() {
               <div className="w-20 h-20 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-6">
                 <Heart className="w-10 h-10 text-purple-600" />
               </div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">Nossos Valores</h2>
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">Os Nossos Valores</h2>
               <p className="text-gray-600 leading-relaxed">
-                Transparência, respeito, qualidade, segurança e compromisso com a satisfação. 
+                Transparência, respeito, qualidade, segurança e compromisso com a satisfação.
                 Acreditamos em relações justas e duradouras entre clientes e profissionais.
               </p>
             </div>
@@ -61,29 +61,30 @@ export function About() {
         <div className="max-w-7xl mx-auto px-4">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div>
-              <h2 className="text-4xl font-bold text-gray-900 mb-6">Nossa História</h2>
+              <h2 className="text-4xl font-bold text-gray-900 mb-6">A Nossa História</h2>
               <div className="space-y-4 text-gray-700 leading-relaxed">
                 <p>
-                  A ServCasa nasceu em 2020 com a missão de resolver um problema comum em Moçambique: 
-                  a dificuldade de encontrar profissionais qualificados e confiáveis para 
-                  serviços domiciliares.
+                  A ServCasa nasceu em 2020 com a missão de resolver um problema comum em Moçambique:
+                  a dificuldade em encontrar profissionais qualificados e de confiança para
+                  serviços domiciliários.
                 </p>
                 <p>
-                  Começámos com apenas 5 profissionais em Maputo. Hoje, contamos 
-                  com mais de 500 profissionais verificados a atender em todo Moçambique, 
-                  tendo realizado mais de 10 mil serviços com índice de satisfação de 98%.
+                  Começámos com apenas 5 profissionais em Maputo. Hoje contamos
+                  com mais de 500 profissionais verificados a prestar serviços em todo Moçambique,
+                  tendo realizado mais de 10 mil serviços com um índice de satisfação de 98%.
                 </p>
                 <p>
-                  A nossa plataforma utiliza tecnologia de ponta para garantir a melhor 
-                  experiência tanto para clientes quanto para profissionais, incluindo 
+                  A nossa plataforma utiliza tecnologia moderna para garantir a melhor
+                  experiência tanto para clientes como para profissionais, incluindo
                   sistema de verificação rigoroso, avaliações em tempo real e pagamento seguro.
                 </p>
                 <p>
-                  Continuamos a crescer e a inovar, sempre focados em proporcionar a melhor 
-                  solução em serviços domiciliares do mercado moçambicano.
+                  Continuamos a crescer e a inovar, sempre focados em proporcionar a melhor
+                  solução em serviços domiciliários no mercado moçambicano.
                 </p>
               </div>
             </div>
+
             <div className="bg-gradient-to-br from-blue-100 to-indigo-100 rounded-2xl p-8">
               <div className="grid grid-cols-2 gap-6">
                 <div className="bg-white rounded-xl p-6 text-center shadow-lg">
@@ -96,7 +97,7 @@ export function About() {
                 </div>
                 <div className="bg-white rounded-xl p-6 text-center shadow-lg">
                   <div className="text-4xl font-bold text-purple-600 mb-2">10+</div>
-                  <div className="text-gray-600">Cidades Atendidas</div>
+                  <div className="text-gray-600">Cidades Abrangidas</div>
                 </div>
                 <div className="bg-white rounded-xl p-6 text-center shadow-lg">
                   <div className="text-4xl font-bold text-orange-600 mb-2">4.9</div>
@@ -113,10 +114,10 @@ export function About() {
         <div className="max-w-7xl mx-auto px-4">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold text-gray-900 mb-4">
-              O que nos diferencia
+              O que nos distingue
             </h2>
             <p className="text-xl text-gray-600">
-              Compromisso com excelência em cada detalhe
+              Compromisso com a excelência em cada detalhe
             </p>
           </div>
 
@@ -129,7 +130,7 @@ export function About() {
                 Verificação Rigorosa
               </h3>
               <p className="text-gray-600">
-                Todos os profissionais passam por verificação de antecedentes criminais, 
+                Todos os profissionais passam por verificação de antecedentes,
                 documentação e qualificações profissionais.
               </p>
             </div>
@@ -142,7 +143,7 @@ export function About() {
                 Garantia de Qualidade
               </h3>
               <p className="text-gray-600">
-                Se não ficar satisfeito com o serviço, garantimos a reexecução 
+                Se não ficar satisfeito com o serviço, garantimos a repetição
                 sem custo adicional.
               </p>
             </div>
@@ -155,8 +156,8 @@ export function About() {
                 Suporte Dedicado
               </h3>
               <p className="text-gray-600">
-                Equipa de suporte disponível 7 dias por semana para o ajudar a si e 
-                aos profissionais.
+                Equipa de suporte disponível 7 dias por semana para ajudar clientes
+                e profissionais.
               </p>
             </div>
 
@@ -165,10 +166,10 @@ export function About() {
                 <TrendingUp className="w-6 h-6 text-orange-600" />
               </div>
               <h3 className="text-xl font-bold text-gray-900 mb-3">
-                Tecnologia Avançada
+                Tecnologia Moderna
               </h3>
               <p className="text-gray-600">
-                Plataforma moderna com agendamento inteligente, pagamento seguro e 
+                Plataforma moderna com agendamento inteligente, pagamento seguro e
                 sistema de avaliações.
               </p>
             </div>
@@ -181,7 +182,7 @@ export function About() {
                 Valorização Profissional
               </h3>
               <p className="text-gray-600">
-                Acreditamos em relações justas e trabalhamos para valorizar o trabalho 
+                Acreditamos em relações justas e trabalhamos para valorizar o trabalho
                 dos profissionais.
               </p>
             </div>
@@ -194,8 +195,8 @@ export function About() {
                 Foco no Cliente
               </h3>
               <p className="text-gray-600">
-                A sua satisfação é a nossa prioridade. Trabalhamos constantemente para 
-                melhorar a experiência.
+                A satisfação do cliente é a nossa prioridade. Trabalhamos continuamente
+                para melhorar a experiência.
               </p>
             </div>
           </div>
@@ -206,7 +207,7 @@ export function About() {
       <section className="py-20 bg-gradient-to-br from-blue-50 to-indigo-50">
         <div className="max-w-7xl mx-auto px-4">
           <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-gray-900 mb-4">Nossa Equipa</h2>
+            <h2 className="text-4xl font-bold text-gray-900 mb-4">A Nossa Equipa</h2>
             <p className="text-xl text-gray-600">
               Profissionais dedicados a trabalhar para si
             </p>
@@ -218,8 +219,8 @@ export function About() {
               Equipa Multidisciplinar
             </h3>
             <p className="text-gray-600 max-w-2xl mx-auto">
-              A nossa equipa é composta por especialistas em tecnologia, atendimento ao cliente, 
-              recursos humanos e gestão de qualidade, todos comprometidos em oferecer a melhor 
+              A nossa equipa é composta por especialistas em tecnologia, atendimento ao cliente,
+              recursos humanos e gestão de qualidade, todos comprometidos em oferecer a melhor
               experiência para clientes e profissionais em todo Moçambique.
             </p>
           </div>

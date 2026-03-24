@@ -1,25 +1,24 @@
 import { useState } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { professionals } from "../data/professionals";
+import { profissionais } from "../data/profissionais";
 import { Calendar, Clock, MapPin, CreditCard, CheckCircle } from "lucide-react";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
 
-export function Booking() {
-  const { professionalId } = useParams();
-  const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const professional = professionals.find((p) => p.id === professionalId);
+export function Agendamento() {
+  const { profissionalId } = useParams();
+  const navegar = useNavigate();
+  const [parametrosPesquisa] = useSearchParams();
+  const profissional = profissionais.find((p) => p.id === profissionalId);
 
-  // Pegar dados dos query params (já preenchidos anteriormente)
-  const date = searchParams.get("date") || "";
-  const time = searchParams.get("time") || "";
-  const duration = searchParams.get("duration") || "2";
-  const address = searchParams.get("address") || "";
-  const description = searchParams.get("description") || "";
+  const data = parametrosPesquisa.get("data") || "";
+  const hora = parametrosPesquisa.get("hora") || "";
+  const duracao = parametrosPesquisa.get("duracao") || "2";
+  const endereco = parametrosPesquisa.get("endereco") || "";
+  const descricao = parametrosPesquisa.get("descricao") || "";
 
-  const [confirmed, setConfirmed] = useState(false);
+  const [confirmado, definirConfirmado] = useState(false);
 
-  if (!professional) {
+  if (!profissional) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -29,28 +28,24 @@ export function Booking() {
     );
   }
 
-  // Calcular preços
-  const totalPrice = professional.hourlyRate * parseInt(duration);
-  const serviceFee = totalPrice * 0.1;
-  const finalPrice = totalPrice + serviceFee;
+  const totalServico = profissional.precoPorHora * parseInt(duracao);
+  const taxaServico = totalServico * 0.1;
+  const precoFinal = totalServico + taxaServico;
 
-  // Formatar data
-  const formattedDate = date
-    ? new Date(date + "T00:00:00").toLocaleDateString("pt-BR", {
+  const dataFormatada = data
+    ? new Date(data + "T00:00:00").toLocaleDateString("pt-BR", {
         weekday: "long",
         day: "2-digit",
         month: "long",
       })
     : "";
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    // Aqui seria enviado para o backend
-    setConfirmed(true);
+  const aoSubmeter = (evento) => {
+    evento.preventDefault();
+    definirConfirmado(true);
   };
 
-  // Tela de confirmação
-  if (confirmed) {
+  if (confirmado) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 flex items-center justify-center px-4">
         <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full text-center">
@@ -59,22 +54,20 @@ export function Booking() {
           </div>
           <h2 className="text-3xl font-bold text-gray-900 mb-3">Agendamento Confirmado!</h2>
           <p className="text-gray-600 mb-6">
-            Seu serviço foi agendado com sucesso. Você receberá uma confirmação por email.
+            O seu serviço foi agendado com sucesso. Receberá uma confirmação por e-mail.
           </p>
           <div className="bg-gray-50 rounded-xl p-4 mb-6 text-left">
             <p className="text-sm text-gray-600 mb-1">Profissional</p>
-            <p className="font-semibold text-gray-900 mb-3">{professional.name}</p>
+            <p className="font-semibold text-gray-900 mb-3">{profissional.nome}</p>
             <p className="text-sm text-gray-600 mb-1">Data e Hora</p>
-            <p className="font-semibold text-gray-900 mb-3">
-              {formattedDate} às {time}
-            </p>
+            <p className="font-semibold text-gray-900 mb-3">{dataFormatada} às {hora}</p>
             <p className="text-sm text-gray-600 mb-1">Duração</p>
-            <p className="font-semibold text-gray-900 mb-3">{duration} horas</p>
+            <p className="font-semibold text-gray-900 mb-3">{duracao} horas</p>
             <p className="text-sm text-gray-600 mb-1">Total</p>
-            <p className="text-2xl font-bold text-green-600">{finalPrice.toFixed(2)} MT</p>
+            <p className="text-2xl font-bold text-green-600">{precoFinal.toFixed(2)} MT</p>
           </div>
           <button
-            onClick={() => navigate("/")}
+            onClick={() => navegar("/")}
             className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-4 rounded-xl font-semibold hover:from-blue-700 hover:to-indigo-700 transition-all"
           >
             Voltar para Início
@@ -87,28 +80,28 @@ export function Booking() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-4xl mx-auto px-4 py-8">
-        {/* Header */}
+        {/* Cabeçalho */}
         <div className="bg-white rounded-xl shadow-md p-6 mb-6 border border-gray-100">
           <div className="flex items-center gap-4">
             <div className="w-16 h-16 rounded-full overflow-hidden">
               <ImageWithFallback
-                src={professional.photo}
-                alt={professional.name}
+                src={profissional.foto}
+                alt={profissional.nome}
                 className="w-full h-full object-cover"
               />
             </div>
             <div className="flex-1">
-              <h2 className="text-2xl font-bold text-gray-900">{professional.name}</h2>
-              <p className="text-gray-600">{professional.experience}</p>
+              <h2 className="text-2xl font-bold text-gray-900">{profissional.nome}</h2>
+              <p className="text-gray-600">{profissional.experiencia}</p>
             </div>
             <div className="text-right">
-              <div className="text-2xl font-bold text-gray-900">{professional.hourlyRate} MT</div>
+              <div className="text-2xl font-bold text-gray-900">{profissional.precoPorHora} MT</div>
               <div className="text-sm text-gray-600">por hora</div>
             </div>
           </div>
         </div>
 
-        {/* Resumo do Agendamento */}
+        {/* Resumo do agendamento */}
         <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl shadow-md p-6 mb-6 border-2 border-blue-200">
           <h3 className="font-bold text-gray-900 mb-4 text-xl">Resumo do Agendamento</h3>
           <div className="grid md:grid-cols-2 gap-4">
@@ -117,37 +110,34 @@ export function Booking() {
                 <Calendar className="w-4 h-4" />
                 <span className="text-sm font-semibold">Data e Horário</span>
               </div>
-              <p className="text-gray-900 font-medium capitalize">{formattedDate}</p>
-              <p className="text-gray-900 font-medium">{time} - {duration}h de duração</p>
+              <p className="text-gray-900 font-medium capitalize">{dataFormatada}</p>
+              <p className="text-gray-900 font-medium">{hora} - {duracao}h de duração</p>
             </div>
             <div>
               <div className="flex items-center gap-2 text-gray-600 mb-2">
                 <MapPin className="w-4 h-4" />
                 <span className="text-sm font-semibold">Endereço</span>
               </div>
-              <p className="text-gray-900 font-medium">{address}</p>
+              <p className="text-gray-900 font-medium">{endereco}</p>
             </div>
           </div>
-          {description && (
+          {descricao && (
             <div className="mt-4 pt-4 border-t border-blue-200">
               <p className="text-sm font-semibold text-gray-600 mb-1">Detalhes do Serviço</p>
-              <p className="text-gray-900">{description}</p>
+              <p className="text-gray-900">{descricao}</p>
             </div>
           )}
         </div>
 
         {/* Pagamento */}
-        <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-md p-6 border border-gray-100">
+        <form onSubmit={aoSubmeter} className="bg-white rounded-xl shadow-md p-6 border border-gray-100">
           <h3 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2">
             <CreditCard className="w-6 h-6 text-blue-600" />
             Pagamento
           </h3>
-
           <div className="space-y-6">
             <div>
-              <label className="block text-gray-700 font-semibold mb-2">
-                Número do Cartão *
-              </label>
+              <label className="block text-gray-700 font-semibold mb-2">Número do Cartão *</label>
               <input
                 type="text"
                 required
@@ -155,12 +145,9 @@ export function Booking() {
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
-
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-gray-700 font-semibold mb-2">
-                  Validade *
-                </label>
+                <label className="block text-gray-700 font-semibold mb-2">Validade *</label>
                 <input
                   type="text"
                   required
@@ -178,11 +165,8 @@ export function Booking() {
                 />
               </div>
             </div>
-
             <div>
-              <label className="block text-gray-700 font-semibold mb-2">
-                Nome no Cartão *
-              </label>
+              <label className="block text-gray-700 font-semibold mb-2">Nome no Cartão *</label>
               <input
                 type="text"
                 required
@@ -191,48 +175,44 @@ export function Booking() {
               />
             </div>
 
-            {/* Resumo do Pagamento */}
+            {/* Resumo do pagamento */}
             <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-6">
               <h4 className="font-semibold text-gray-900 mb-4">Resumo do Pagamento</h4>
               <div className="space-y-2">
                 <div className="flex justify-between text-gray-700">
                   <span>Valor por hora:</span>
-                  <span>{professional.hourlyRate.toFixed(2)} MT</span>
+                  <span>{profissional.precoPorHora.toFixed(2)} MT</span>
                 </div>
                 <div className="flex justify-between text-gray-700">
                   <span>Duração:</span>
-                  <span>{duration} horas</span>
+                  <span>{duracao} horas</span>
                 </div>
                 <div className="flex justify-between text-gray-700">
                   <span>Subtotal:</span>
-                  <span>{totalPrice.toFixed(2)} MT</span>
+                  <span>{totalServico.toFixed(2)} MT</span>
                 </div>
                 <div className="flex justify-between text-gray-700">
                   <span>Taxa de serviço (10%):</span>
-                  <span>{serviceFee.toFixed(2)} MT</span>
+                  <span>{taxaServico.toFixed(2)} MT</span>
                 </div>
                 <div className="border-t border-blue-200 pt-2 mt-2">
                   <div className="flex justify-between items-center">
                     <span className="text-lg font-semibold text-gray-900">Total:</span>
-                    <span className="text-2xl font-bold text-blue-600">
-                      {finalPrice.toFixed(2)} MT
-                    </span>
+                    <span className="text-2xl font-bold text-blue-600">{precoFinal.toFixed(2)} MT</span>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Botão de Pagamento */}
             <button
               type="submit"
               className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-4 rounded-xl font-bold text-lg hover:from-blue-700 hover:to-indigo-700 transition-all shadow-lg"
             >
               Confirmar Pagamento
             </button>
-
             <p className="text-xs text-gray-500 text-center">
-              Ao confirmar, você concorda com nossos termos de serviço e política de privacidade.
-              Seus dados de pagamento são processados de forma segura.
+              Ao confirmar, concorda com os nossos termos de serviço e política de privacidade.
+              Os seus dados de pagamento são processados de forma segura.
             </p>
           </div>
         </form>

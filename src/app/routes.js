@@ -1,27 +1,27 @@
 import { createBrowserRouter } from "react-router-dom";
 import { Root } from "./Root";
 import { LandingHome } from "./pages/LandingHome";
-import { About } from "./pages/About";
-import { Contact } from "./pages/Contact";
-import { Services } from "./pages/Services";
-import { SelectDateTime } from "./pages/SelectDateTime";
-import { AvailableProfessionals } from "./pages/AvailableProfessionals";
-import { ProfessionalDetail } from "./pages/ProfessionalDetail";
-import { Booking } from "./pages/Booking";
+import { Sobre } from "./pages/Sobre";
+import { Contacto } from "./pages/Contacto";
+import { Servicos } from "./pages/Servicos";
+import { SelecionarDataHora } from "./pages/SelecionarDataHora";
+import { ProfissionaisDisponiveis } from "./pages/ProfissionaisDisponiveis";
+import { DetalheProfissional } from "./pages/DetalheProfissional";
+import { Agendamento } from "./pages/Agendamento";
 
-export const router = createBrowserRouter([
+export const rotas = createBrowserRouter([
   {
     path: "/",
     Component: Root,
     children: [
       { index: true, Component: LandingHome },
-      { path: "sobre", Component: About },
-      { path: "contato", Component: Contact },
-      { path: "servicos", Component: Services },
-      { path: "categoria/:categoryId", Component: SelectDateTime },
-      { path: "categoria/:categoryId/profissionais", Component: AvailableProfessionals },
-      { path: "profissional/:professionalId", Component: ProfessionalDetail },
-      { path: "agendar/:professionalId", Component: Booking },
+      { path: "sobre", Component: Sobre },
+      { path: "contacto", Component: Contacto },
+      { path: "servicos", Component: Servicos },
+      { path: "categoria/:categoriaId", Component: SelecionarDataHora },
+      { path: "categoria/:categoriaId/profissionais", Component: ProfissionaisDisponiveis },
+      { path: "profissional/:profissionalId", Component: DetalheProfissional },
+      { path: "agendar/:profissionalId", Component: Agendamento },
     ],
   },
 ]);

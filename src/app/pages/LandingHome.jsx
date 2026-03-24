@@ -392,7 +392,7 @@ export function LandingHome() {
 
           <div className="text-center mt-12">
             <Link
-              to="/contato"
+              to="/contacto"
               className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-bold text-lg hover:from-blue-700 hover:to-indigo-700 transition-all shadow-lg"
             >
               Enviar Mensagem
@@ -404,3 +404,4 @@ export function LandingHome() {
     </div>
   );
 }
+

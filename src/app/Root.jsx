@@ -1,13 +1,13 @@
 import { Outlet, useLocation } from "react-router-dom";
-import { Header } from "./components/Header";
+import { Cabecalho } from "./components/Cabecalho";
 
 export function Root() {
-  const location = useLocation();
-  const hideHeader = location.pathname.includes("/agendar/");
+  const localizacao = useLocation();
+  const esconderCabecalho = localizacao.pathname.includes("/agendar/");
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {!hideHeader && <Header />}
+      {!esconderCabecalho && <Cabecalho />}
       <Outlet />
     </div>
   );

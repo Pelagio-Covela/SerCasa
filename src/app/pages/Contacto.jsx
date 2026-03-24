@@ -1,44 +1,51 @@
 import { Mail, Phone, MapPin, Clock, Send } from "lucide-react";
 import { useState } from "react";
 
-export function Contact() {
-  const [formData, setFormData] = useState({
-    name: "",
+export function Contacto() {
+  const [dadosFormulario, definirDadosFormulario] = useState({
+    nome: "",
     email: "",
-    phone: "",
-    subject: "",
-    message: "",
+    telefone: "",
+    assunto: "",
+    mensagem: "",
   });
-  const [submitted, setSubmitted] = useState(false);
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    // Aqui seria integrado com o backend
-    setSubmitted(true);
+  const [foiSubmetido, definirFoiSubmetido] = useState(false);
+
+  const aoSubmeter = (evento) => {
+    evento.preventDefault();
+    // Aqui será feita a integração com o backend
+    definirFoiSubmetido(true);
     setTimeout(() => {
-      setSubmitted(false);
-      setFormData({ name: "", email: "", phone: "", subject: "", message: "" });
+      definirFoiSubmetido(false);
+      definirDadosFormulario({
+        nome: "",
+        email: "",
+        telefone: "",
+        assunto: "",
+        mensagem: "",
+      });
     }, 3000);
   };
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Hero Section */}
+      {/* Secção principal */}
       <section className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-20">
         <div className="max-w-7xl mx-auto px-4">
           <h1 className="text-5xl font-bold mb-6">Entre em Contacto</h1>
           <p className="text-xl text-blue-100 max-w-2xl">
-            Estamos aqui para ajudar! Entre em contacto connosco através de qualquer um dos 
+            Estamos aqui para ajudar. Entre em contacto connosco através de qualquer um dos
             canais abaixo ou preencha o formulário.
           </p>
         </div>
       </section>
 
-      {/* Contact Information & Form */}
+      {/* Informações de contacto e formulário */}
       <section className="py-20">
         <div className="max-w-7xl mx-auto px-4">
           <div className="grid lg:grid-cols-3 gap-8">
-            {/* Contact Info */}
+            {/* Informações de contacto */}
             <div className="space-y-6">
               <div>
                 <h2 className="text-2xl font-bold text-gray-900 mb-6">
@@ -83,7 +90,8 @@ export function Contact() {
                   <div>
                     <h3 className="font-bold text-gray-900 mb-1">Morada</h3>
                     <p className="text-gray-600">
-                      Av. Julius Nyerere, 1000<br />
+                      Av. Julius Nyerere, 1000
+                      <br />
                       Maputo, Moçambique
                     </p>
                   </div>
@@ -98,36 +106,38 @@ export function Contact() {
                   <div>
                     <h3 className="font-bold text-gray-900 mb-1">Horário de Atendimento</h3>
                     <p className="text-gray-600">
-                      Segunda a Sexta: 8h às 18h<br />
-                      Sábado: 9h às 13h<br />
-                      Domingo: Fechado
+                      Segunda a Sexta: 8h às 18h
+                      <br />
+                      Sábado: 9h às 13h
+                      <br />
+                      Domingo: Encerrado
                     </p>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Contact Form */}
+            {/* Formulário de contacto */}
             <div className="lg:col-span-2">
               <div className="bg-white rounded-xl shadow-lg p-8 border border-gray-100">
                 <h2 className="text-2xl font-bold text-gray-900 mb-6">
                   Envie uma Mensagem
                 </h2>
 
-                {submitted ? (
+                {foiSubmetido ? (
                   <div className="bg-green-50 border-2 border-green-500 rounded-xl p-8 text-center">
                     <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
                       <Send className="w-8 h-8 text-white" />
                     </div>
                     <h3 className="text-2xl font-bold text-gray-900 mb-2">
-                      Mensagem Enviada!
+                      Mensagem Enviada
                     </h3>
                     <p className="text-gray-600">
-                      Obrigado pelo contacto. Responderemos em breve!
+                      Obrigado pelo seu contacto. Responderemos em breve.
                     </p>
                   </div>
                 ) : (
-                  <form onSubmit={handleSubmit} className="space-y-6">
+                  <form onSubmit={aoSubmeter} className="space-y-6">
                     <div className="grid md:grid-cols-2 gap-6">
                       <div>
                         <label className="block text-gray-700 font-semibold mb-2">
@@ -136,8 +146,13 @@ export function Contact() {
                         <input
                           type="text"
                           required
-                          value={formData.name}
-                          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                          value={dadosFormulario.nome}
+                          onChange={(evento) =>
+                            definirDadosFormulario({
+                              ...dadosFormulario,
+                              nome: evento.target.value,
+                            })
+                          }
                           className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                           placeholder="O seu nome"
                         />
@@ -150,10 +165,15 @@ export function Contact() {
                         <input
                           type="email"
                           required
-                          value={formData.email}
-                          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                          value={dadosFormulario.email}
+                          onChange={(evento) =>
+                            definirDadosFormulario({
+                              ...dadosFormulario,
+                              email: evento.target.value,
+                            })
+                          }
                           className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          placeholder="seuemail@exemplo.co.mz"
+                          placeholder="oseuemail@exemplo.co.mz"
                         />
                       </div>
                     </div>
@@ -165,8 +185,13 @@ export function Contact() {
                         </label>
                         <input
                           type="tel"
-                          value={formData.phone}
-                          onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                          value={dadosFormulario.telefone}
+                          onChange={(evento) =>
+                            definirDadosFormulario({
+                              ...dadosFormulario,
+                              telefone: evento.target.value,
+                            })
+                          }
                           className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                           placeholder="+258 84 0000 000"
                         />
@@ -178,11 +203,16 @@ export function Contact() {
                         </label>
                         <select
                           required
-                          value={formData.subject}
-                          onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
+                          value={dadosFormulario.assunto}
+                          onChange={(evento) =>
+                            definirDadosFormulario({
+                              ...dadosFormulario,
+                              assunto: evento.target.value,
+                            })
+                          }
                           className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         >
-                          <option value="">Seleccione um assunto</option>
+                          <option value="">Selecione um assunto</option>
                           <option value="duvidas">Dúvidas sobre serviços</option>
                           <option value="suporte">Suporte técnico</option>
                           <option value="profissional">Quero ser profissional</option>
@@ -199,8 +229,13 @@ export function Contact() {
                       <textarea
                         required
                         rows={6}
-                        value={formData.message}
-                        onChange={(e) => setFormData({ ...formData, message: e.target.value })}
+                        value={dadosFormulario.mensagem}
+                        onChange={(evento) =>
+                          definirDadosFormulario({
+                            ...dadosFormulario,
+                            mensagem: evento.target.value,
+                          })
+                        }
                         className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         placeholder="Escreva a sua mensagem aqui..."
                       />
@@ -221,7 +256,7 @@ export function Contact() {
         </div>
       </section>
 
-      {/* FAQ Section */}
+      {/* Perguntas frequentes */}
       <section className="py-20 bg-white">
         <div className="max-w-4xl mx-auto px-4">
           <div className="text-center mb-12">
@@ -229,35 +264,39 @@ export function Contact() {
               Perguntas Frequentes
             </h2>
             <p className="text-gray-600">
-              Confira as respostas para as dúvidas mais comuns
+              Consulte as respostas às dúvidas mais comuns
             </p>
           </div>
 
           <div className="space-y-4">
             {[
               {
-                q: "Como funciona a contratação de serviços?",
-                a: "É simples! Escolha o serviço, seleccione data e horário, escolha o profissional disponível e confirme o agendamento.",
+                pergunta: "Como funciona a contratação de serviços?",
+                resposta:
+                  "É simples. Escolha o serviço, selecione a data e o horário, escolha o profissional disponível e confirme o agendamento.",
               },
               {
-                q: "Os profissionais são verificados?",
-                a: "Sim! Todos os profissionais passam por verificação rigorosa de antecedentes, documentação e qualificações.",
+                pergunta: "Os profissionais são verificados?",
+                resposta:
+                  "Sim. Todos os profissionais passam por uma verificação rigorosa de antecedentes, documentação e qualificações.",
               },
               {
-                q: "Como funciona o pagamento?",
-                a: "O pagamento é feito de forma segura através da plataforma, com diversas opções como cartão de crédito, débito e M-Pesa.",
+                pergunta: "Como funciona o pagamento?",
+                resposta:
+                  "O pagamento é efetuado de forma segura através da plataforma, com diferentes opções como cartão de crédito, débito e M-Pesa.",
               },
               {
-                q: "E se eu não ficar satisfeito com o serviço?",
-                a: "Oferecemos garantia de satisfação. Se não ficar satisfeito, refazemos o serviço sem custo adicional.",
+                pergunta: "E se eu não ficar satisfeito com o serviço?",
+                resposta:
+                  "Oferecemos garantia de satisfação. Se não ficar satisfeito, voltamos a realizar o serviço sem custo adicional.",
               },
-            ].map((faq, index) => (
+            ].map((item, indice) => (
               <div
-                key={index}
+                key={indice}
                 className="bg-gray-50 rounded-xl p-6 border border-gray-200"
               >
-                <h3 className="font-bold text-gray-900 mb-2">{faq.q}</h3>
-                <p className="text-gray-600">{faq.a}</p>
+                <h3 className="font-bold text-gray-900 mb-2">{item.pergunta}</h3>
+                <p className="text-gray-600">{item.resposta}</p>
               </div>
             ))}
           </div>
