@@ -1,0 +1,84 @@
+generator client {
+  provider = "prisma-client-js"
+  
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model agendamentos {
+  id                  Int       @id @default(autoincrement())
+  profissional_id     Int?
+  categoria_id        String?   @db.VarChar(50)
+  nome_cliente        String?   @db.VarChar(100)
+  telefone            String?   @db.VarChar(20)
+  data                DateTime? @db.Date
+  hora                DateTime? @db.Time(0)
+  duracao             Int?
+  endereco            String?   @db.Text
+  latitude            Decimal?  @db.Decimal(10, 8)
+  longitude           Decimal?  @db.Decimal(11, 8)
+  descricao           String?   @db.Text
+  status              String?   @default("pendente") @db.VarChar(20)
+  motivo_cancelamento String?   @db.Text
+  criado_em           DateTime? @default(now()) @db.Timestamp(0)
+
+  @@index([profissional_id], map: "profissional_id")
+}
+
+model categorias {
+  id        String  @id @db.VarChar(50)
+  nome      String  @db.VarChar(100)
+  icone     String? @db.VarChar(50)
+  descricao String? @db.Text
+  cor       String? @db.VarChar(50)
+}
+
+model competencias {
+  id              Int     @id @default(autoincrement())
+  profissional_id Int?
+  nome            String? @db.VarChar(100)
+
+  @@index([profissional_id], map: "profissional_id")
+}
+
+model disponibilidade {
+  id              Int     @id @default(autoincrement())
+  profissional_id Int?
+  dia_semana      String? @db.VarChar(20)
+
+  @@index([profissional_id], map: "profissional_id")
+}
+
+model profissionais {
+  id                         Int       @id @default(autoincrement())
+  usuario_id                 Int?
+  nome                       String?   @db.VarChar(100)
+  telefone                   String?   @db.VarChar(20)
+  categoria_id               String?   @db.VarChar(50)
+  avaliacao                  Decimal?  @db.Decimal(2, 1)
+  total_avaliacoes           Int?
+  preco_por_hora             Decimal?  @db.Decimal(10, 2)
+  foto                       String?   @db.MediumText
+  experiencia                String?   @db.VarChar(100)
+  descricao                  String?   @db.Text
+  latitude                   Decimal?  @db.Decimal(10, 8)
+  longitude                  Decimal?  @db.Decimal(11, 8)
+  localizacao_atualizada_em  DateTime? @db.Timestamp(0)
+  ativo                      Boolean   @default(true)
+
+  @@index([categoria_id], map: "categoria_id")
+  @@index([usuario_id], map: "usuario_id")
+}
+
+model usuarios {
+  id         Int      @id @default(autoincrement())
+  nome       String   @db.VarChar(100)
+  email      String   @unique @db.VarChar(150)
+  senha_hash String   @db.VarChar(255)
+  papel      String   @db.VarChar(20) // "gerente" ou "trabalhador"
+  ativo      Boolean? @default(true)
+  criado_em  DateTime? @default(now()) @db.Timestamp(0)
+}
