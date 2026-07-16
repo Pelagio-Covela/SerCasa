@@ -153,7 +153,7 @@ export const resetarSenhaGestor = (id, senha) =>
   });
 
 export const resetarSenhaTrabalhador = (profissionalId, senha) =>
-  pedidoAutenticado(`/admin/trabalhadores/${profissionalId}/resetar-senha`, {
+  pedidoAutenticado(`/gerente/profissionais/${profissionalId}/resetar-senha`, {
     method: "PUT",
     body: JSON.stringify({ senha }),
   });
@@ -181,3 +181,47 @@ export async function getCategorias() {
   const resposta = await fetch(`${BASE_URL}/categorias`);
   return resposta.json();
 }
+
+// ─── Configurações do sistema (admin) ───────────────────────────────────────
+
+export const getConfiguracoes = () => pedidoAutenticado("/admin/configuracoes");
+
+export const atualizarConfiguracao = (chave, valor) =>
+  pedidoAutenticado(`/admin/configuracoes/${chave}`, {
+    method: "PUT",
+    body: JSON.stringify({ valor }),
+  });
+
+// ─── Conta própria ───────────────────────────────────────────────────────────
+
+export const trocarMinhaSenha = (senhaAtual, novaSenha) =>
+  pedidoAutenticado("/auth/trocar-senha", {
+    method: "PUT",
+    body: JSON.stringify({ senhaAtual, novaSenha }),
+  });
+
+export const marcarPago = (id) =>
+  pedidoAutenticado(`/gerente/agendamentos/${id}/marcar-pago`, { method: "PUT" });
+
+// ─── Financeiro ──────────────────────────────────────────────────────────────
+
+export const getFinanceiro = (filtros = {}) => {
+  const params = new URLSearchParams();
+  Object.entries(filtros).forEach(([chave, valor]) => { if (valor) params.set(chave, valor); });
+  const query = params.toString();
+  return pedidoAutenticado(`/gerente/financeiro${query ? `?${query}` : ""}`);
+};
+
+export const marcarPagoProfissional = (id) =>
+  pedidoAutenticado(`/gerente/agendamentos/${id}/marcar-pago-profissional`, { method: "PUT" });
+
+// ─── Avaliações (moderação) ─────────────────────────────────────────────────
+
+export const getAvaliacoes = (status) =>
+  pedidoAutenticado(`/gerente/avaliacoes${status ? `?status=${status}` : ""}`);
+
+export const aprovarAvaliacao = (id) =>
+  pedidoAutenticado(`/gerente/avaliacoes/${id}/aprovar`, { method: "PUT" });
+
+export const rejeitarAvaliacao = (id) =>
+  pedidoAutenticado(`/gerente/avaliacoes/${id}/rejeitar`, { method: "PUT" });

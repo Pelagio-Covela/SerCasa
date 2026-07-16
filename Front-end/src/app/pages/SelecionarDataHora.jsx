@@ -1,18 +1,25 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { categorias } from "../data/profissionais";
+import { getCategoria } from "../api";
 import { Calendar, Clock, MapPin, ArrowRight, LocateFixed, Map } from "lucide-react";
 import { LocationPicker, obterEnderecoPorCoordenadas } from "../components/LocationPicker";
+import { corDeFundoCategoria } from "../utils/cores";
 
 export function SelecionarDataHora() {
   const { categoriaId } = useParams();
   const navegar = useNavigate();
-  const categoria = categorias.find((c) => c.id === categoriaId);
+  const [categoria, definirCategoria] = useState(null);
+  const [carregandoCategoria, definirCarregandoCategoria] = useState(true);
+
+  useEffect(() => {
+    getCategoria(categoriaId)
+      .then(definirCategoria)
+      .finally(() => definirCarregandoCategoria(false));
+  }, [categoriaId]);
 
   const [dadosFormulario, definirDadosFormulario] = useState({
     data: "",
     hora: "",
-    duracao: "2",
     endereco: "",
     descricao: "",
     latitude: "",
@@ -58,7 +65,6 @@ export function SelecionarDataHora() {
     const params = new URLSearchParams({
       data: dadosFormulario.data,
       hora: dadosFormulario.hora,
-      duracao: dadosFormulario.duracao,
       endereco: dadosFormulario.endereco,
       descricao: dadosFormulario.descricao || "",
       latitude: dadosFormulario.latitude || "",
@@ -66,6 +72,14 @@ export function SelecionarDataHora() {
     });
     navegar(`/categoria/${categoriaId}/profissionais?${params.toString()}`);
   };
+
+  if (carregandoCategoria) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   if (!categoria) {
     return (
@@ -81,7 +95,7 @@ export function SelecionarDataHora() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className={`${categoria.cor} text-white py-8 px-4`}>
+      <div className="text-white py-8 px-4" style={{ background: corDeFundoCategoria(categoria.cor) }}>
         <div className="max-w-4xl mx-auto">
           <h1 className="text-3xl font-bold mb-2">{categoria.nome}</h1>
           <p className="text-lg opacity-90">{categoria.descricao}</p>
@@ -161,26 +175,6 @@ export function SelecionarDataHora() {
                   </select>
                   <p className="text-sm text-gray-500 mt-1">Hora a que o profissional deve chegar</p>
                 </div>
-              </div>
-              <div>
-                <label className="block text-gray-700 font-semibold mb-2">
-                  <Clock className="w-5 h-5 inline mr-1" />
-                  Duração Estimada *
-                </label>
-                <select
-                  required
-                  value={dadosFormulario.duracao}
-                  onChange={(evento) => definirDadosFormulario({ ...dadosFormulario, duracao: evento.target.value })}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-lg"
-                >
-                  <option value="1">1 hora</option>
-                  <option value="2">2 horas</option>
-                  <option value="3">3 horas</option>
-                  <option value="4">4 horas (meio período)</option>
-                  <option value="6">6 horas</option>
-                  <option value="8">8 horas (dia inteiro)</option>
-                </select>
-                <p className="text-sm text-gray-500 mt-1">Poderá ajustar com o profissional depois</p>
               </div>
             </div>
 
@@ -278,10 +272,6 @@ export function SelecionarDataHora() {
                   <div className="flex justify-between">
                     <span className="text-gray-600">Hora:</span>
                     <span className="font-medium text-gray-900">{dadosFormulario.hora}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Duração:</span>
-                    <span className="font-medium text-gray-900">{dadosFormulario.duracao} horas</span>
                   </div>
                 </div>
               </div>

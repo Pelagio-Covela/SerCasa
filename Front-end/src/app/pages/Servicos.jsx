@@ -1,14 +1,24 @@
+import { useEffect, useState } from "react";
 import { CartaoCategoria } from "../components/CartaoCategoria";
-import { categorias } from "../data/profissionais";
+import { getCategorias } from "../api";
 import { Calendar, Clock, CheckCircle } from "lucide-react";
 
 export function Servicos() {
+  const [categorias, definirCategorias] = useState([]);
+  const [carregando, definirCarregando] = useState(true);
+
+  useEffect(() => {
+    getCategorias()
+      .then((lista) => definirCategorias(lista || []))
+      .catch(() => definirCategorias([]))
+      .finally(() => definirCarregando(false));
+  }, []);
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
       <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-12 px-4">
         <div className="max-w-7xl mx-auto">
           <h1 className="text-4xl font-bold mb-3">Solicitar Serviço</h1>
-          <p className="text-lg text-blue-100 mb-6">Escolha o tipo de serviço de que precisa</p>
+          <p className="text-lg text-blue-100 mb-6">Escolha o tipo de serviço que precisa</p>
           <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-white/20">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="flex items-center gap-3">
@@ -43,9 +53,19 @@ export function Servicos() {
           <p className="text-gray-600">Selecione o serviço que deseja contratar</p>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
-          {categorias.map((categoria) => (
-            <CartaoCategoria key={categoria.id} categoria={categoria} />
-          ))}
+          {carregando ? (
+            [1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="h-40 bg-gray-100 rounded-xl animate-pulse" />
+            ))
+          ) : categorias.length === 0 ? (
+            <p className="col-span-full text-center text-gray-500 py-8">
+              Nenhuma categoria disponível no momento.
+            </p>
+          ) : (
+            categorias.map((categoria) => (
+              <CartaoCategoria key={categoria.id} categoria={categoria} />
+            ))
+          )}
         </div>
 
         <div className="mt-16 bg-white rounded-2xl shadow-lg p-8 border border-gray-100">

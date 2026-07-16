@@ -1,4 +1,4 @@
-import { Star, DollarSign } from "lucide-react";
+import { Star, Banknote } from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
 import { AvatarProfissional } from "./AvatarProfissional";
 
@@ -30,7 +30,7 @@ export function CartaoProfissional({ profissional }) {
         <p className="text-sm text-gray-600 mb-3">{profissional.experiencia}</p>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1 text-green-600">
-            <DollarSign className="w-5 h-5" />
+            <Banknote className="w-5 h-5" />
             <span className="text-lg font-bold">{profissional.precoPorHora} MT</span>
             <span className="text-sm text-gray-600">/hora</span>
           </div>

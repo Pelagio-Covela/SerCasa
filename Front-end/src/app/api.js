@@ -23,6 +23,12 @@ export const getCategorias = async () => {
   return res.json();
 };
 
+export const getCategoria = async (id) => {
+  const res = await fetch(`${BASE_URL}/categorias/${id}`);
+  if (!res.ok) return null;
+  return res.json();
+};
+
 // AGENDAMENTOS
 export const criarAgendamento = async (dados) => {
   const res = await fetch(`${BASE_URL}/agendamentos`, {
@@ -40,5 +46,43 @@ export const enviarContacto = async (dados) => {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(dados),
   });
+  const resposta = await res.json();
+  if (!res.ok) throw new Error(resposta.mensagem || "Erro ao enviar mensagem");
+  return resposta;
+};
+// PAGAMENTO PÓS-SERVIÇO (fatura + submissão dos dados de pagamento)
+export const getFatura = async (token) => {
+  const res = await fetch(`${BASE_URL}/agendamentos/pagamento/${token}`);
+  const dados = await res.json();
+  if (!res.ok) throw new Error(dados.mensagem || "Fatura não encontrada");
+  return dados;
+};
+
+export const submeterPagamento = async (token, metodo_pagamento, detalhes) => {
+  const res = await fetch(`${BASE_URL}/agendamentos/pagamento/${token}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ metodo_pagamento, detalhes }),
+  });
+  const dados = await res.json();
+  if (!res.ok) throw new Error(dados.mensagem || "Erro ao submeter o pagamento");
+  return dados;
+};
+
+// AVALIAÇÕES
+export const submeterAvaliacao = async (token, nota, comentario) => {
+  const res = await fetch(`${BASE_URL}/agendamentos/pagamento/${token}/avaliacao`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ nota, comentario }),
+  });
+  const dados = await res.json();
+  if (!res.ok) throw new Error(dados.mensagem || "Erro ao submeter avaliação");
+  return dados;
+};
+
+export const getAvaliacoesProfissional = async (profissionalId) => {
+  const res = await fetch(`${BASE_URL}/profissionais/${profissionalId}/avaliacoes`);
+  if (!res.ok) return { total: 0, avaliacoes: [] };
   return res.json();
 };

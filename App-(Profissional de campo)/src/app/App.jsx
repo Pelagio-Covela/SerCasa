@@ -3,15 +3,15 @@ import {
   Home, Map, Clock, User, Phone, Eye, EyeOff,
   LogOut, MapPin, ArrowLeft, Navigation,
   CheckCircle, AlertCircle, Calendar,
-  Star, Loader2, Wallet, Check, Timer, RefreshCw,
+  Star, Loader2, Wallet, Check, Timer, RefreshCw, Power,
 } from "lucide-react";
 import { MapContainer, TileLayer, Marker, useMap } from "react-leaflet";
 import L from "leaflet";
 import {
   login, guardarSessao, limparSessao, obterUtilizadorGuardado,
   getMeusPedidos, getPedidosProximos, getPedido, aceitarPedido,
-  fazerCheckin, fazerCheckout, atualizarLocalizacao,
-  getHistorico, getPerfil, atualizarDisponibilidade,
+  fazerCheckin, fazerCheckout, atualizarLocalizacao, editarDuracaoEstimada,
+  getHistorico, getPerfil, atualizarDisponibilidade, atualizarDisponivelAgora,
 } from "./api.js";
 
 // Corrige o ícone padrão do Leaflet (não carrega sozinho no Vite)
@@ -25,7 +25,7 @@ L.Icon.Default.mergeOptions({
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function R(v) {
-  return Number(v || 0).toLocaleString("pt-MZ", { style: "currency", currency: "MZN" });
+  return `${Number(v || 0).toLocaleString("pt-MZ", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} MT`;
 }
 
 function formatarCronometro(s) {
@@ -63,10 +63,13 @@ const EMOJI_CATEGORIA = {
   domestica: "🧹", encanador: "🔧", cozinheiro: "🍳", jardineiro: "🌿", eletricista: "⚡",
 };
 
+// Regra de negócio: Pendente = atribuído mas ainda sem check-in (inclui os
+// estados internos "aceite" e "a_caminho", anteriores ao check-in);
+// Em execução = check-in feito, sem check-out ainda; Concluído = os dois feitos.
 const STATUS_CFG = {
   pendente: { label: "Pendente", cls: "bg-amber-500/20 text-amber-400" },
-  aceite: { label: "Aceite", cls: "bg-blue-500/20 text-blue-400" },
-  a_caminho: { label: "A caminho", cls: "bg-blue-500/20 text-blue-400" },
+  aceite: { label: "Pendente", cls: "bg-amber-500/20 text-amber-400" },
+  a_caminho: { label: "Pendente", cls: "bg-amber-500/20 text-amber-400" },
   em_execucao: { label: "Em execução", cls: "bg-blue-500/20 text-blue-400" },
   concluido: { label: "Concluído", cls: "bg-green-500/20 text-green-400" },
   cancelado: { label: "Cancelado", cls: "bg-red-500/20 text-red-400" },
@@ -78,6 +81,61 @@ function Badge({ status }) {
     <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${c.cls}`}>
       {c.label}
     </span>
+  );
+}
+
+// ── Seletor de duração (relógio nativo horas:minutos) ──────────────────────────
+
+function minutosParaHHMM(minutos) {
+  const h = Math.floor(minutos / 60);
+  const m = minutos % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
+function hhmmParaMinutos(hhmm) {
+  const [h, m] = hhmm.split(":").map(Number);
+  return h * 60 + m;
+}
+
+// Selector de horas:minutos usando o <input type="time"> nativo — em
+// telemóveis (iOS/Android) isto mostra o "relógio" giratório nativo do
+// aparelho, muito mais preciso e familiar do que botões pré-definidos.
+// Se minimoMinutos for passado, só aceita valores estritamente maiores.
+function SeletorDuracaoRelogio({ valorMinutos, aoMudar, minimoMinutos }) {
+  const [erro, setErro] = useState("");
+
+  function lidarComMudanca(evento) {
+    const valor = evento.target.value;
+    if (!valor) return;
+    const minutos = hhmmParaMinutos(valor);
+
+    if (minimoMinutos != null && minutos <= minimoMinutos) {
+      setErro(`Escolha um valor maior que ${minutosParaHHMM(minimoMinutos)}`);
+      return;
+    }
+    setErro("");
+    aoMudar(minutos);
+  }
+
+  return (
+    <div>
+      <input
+        type="time"
+        value={minutosParaHHMM(valorMinutos)}
+        onChange={lidarComMudanca}
+        className="w-full text-center text-[28px] font-bold rounded-2xl py-3 px-4"
+        style={{
+          background: "rgba(255,255,255,0.06)",
+          border: "1px solid rgba(255,255,255,0.12)",
+          color: "white",
+          colorScheme: "dark",
+        }}
+      />
+      <p className="text-center text-[11px] mt-1.5" style={{ color: "rgba(255,255,255,0.35)" }}>horas : minutos</p>
+      {erro && (
+        <p className="text-center text-[12px] mt-1" style={{ color: "#f87171" }}>{erro}</p>
+      )}
+    </div>
   );
 }
 
@@ -229,7 +287,6 @@ function CardPedido({ pedido, aoTap, distancia }) {
             <span className="text-white font-semibold text-[15px] truncate">{pedido.nome_cliente}</span>
             <Badge status={pedido.status} />
           </div>
-          <p className="text-[13px] mb-2" style={{ color: "rgba(255,255,255,0.45)" }}>{pedido.nome_categoria || pedido.categoria_id}</p>
           <div className="flex items-center gap-1 text-[12px] mb-1" style={{ color: "rgba(255,255,255,0.35)" }}>
             <MapPin size={11} />
             <span className="truncate">{pedido.endereco}</span>
@@ -252,24 +309,51 @@ function CardPedido({ pedido, aoTap, distancia }) {
 
 // ── Tela: Início ──────────────────────────────────────────────────────────────
 
+// início (segunda) e fim (domingo) da semana corrente, para separar
+// "esta semana" de "próximas semanas" nas abas de pedidos
+function limitesDaSemanaAtual() {
+  const hoje = new Date();
+  const diaSemana = hoje.getDay(); // 0=Domingo...6=Sábado
+  const deslocamento = diaSemana === 0 ? -6 : 1 - diaSemana; // volta até Segunda
+  const inicio = new Date(hoje);
+  inicio.setDate(hoje.getDate() + deslocamento);
+  inicio.setHours(0, 0, 0, 0);
+  const fim = new Date(inicio);
+  fim.setDate(inicio.getDate() + 6);
+  fim.setHours(23, 59, 59, 999);
+  return { inicio, fim };
+}
+
+// ordena por data+hora crescente — o pedido mais próximo (hoje/em breve)
+// aparece primeiro
+function ordenarPorDataHora(pedidos) {
+  return [...pedidos].sort((a, b) => {
+    const chaveA = `${(a.data || "").slice(0, 10)} ${(a.hora || "00:00").slice(0, 5)}`;
+    const chaveB = `${(b.data || "").slice(0, 10)} ${(b.hora || "00:00").slice(0, 5)}`;
+    return chaveA.localeCompare(chaveB);
+  });
+}
+
 function TelaInicio({ utilizador, aoAbrirPedido }) {
   const [aba, setAba] = useState("meus");
   const [estado, setEstado] = useState("carregando");
   const [meusPedidos, setMeusPedidos] = useState([]);
-  const [pedidosProximos, setPedidosProximos] = useState([]);
   const [ganhoSemana, setGanhoSemana] = useState(0);
+  const [disponivelAgora, setDisponivelAgora] = useState(true);
+  const [alterandoDisponibilidade, setAlterandoDisponibilidade] = useState(false);
+  const [erroDisponibilidade, setErroDisponibilidade] = useState("");
 
   async function carregar() {
     setEstado("carregando");
     try {
-      const [meus, proximos, historico] = await Promise.all([
+      const [meus, historico, perfil] = await Promise.all([
         getMeusPedidos(),
-        getPedidosProximos().catch(() => ({ pedidos: [] })), // sem localização ainda = lista vazia, não é erro fatal
         getHistorico("semana").catch(() => ({ totalRecebido: 0 })),
+        getPerfil().catch(() => null),
       ]);
       setMeusPedidos(meus.pedidos);
-      setPedidosProximos(proximos.pedidos);
       setGanhoSemana(historico.totalRecebido || 0);
+      if (perfil) setDisponivelAgora(!!perfil.disponivel_agora);
       setEstado("carregado");
     } catch {
       setEstado("erro");
@@ -278,7 +362,36 @@ function TelaInicio({ utilizador, aoAbrirPedido }) {
 
   useEffect(() => { carregar(); }, []);
 
-  const pedidos = aba === "meus" ? meusPedidos : pedidosProximos;
+  async function lidarComAlternarDisponibilidade() {
+    const novoValor = !disponivelAgora;
+    setAlterandoDisponibilidade(true);
+    setErroDisponibilidade("");
+    try {
+      await atualizarDisponivelAgora(novoValor);
+      setDisponivelAgora(novoValor);
+    } catch (falha) {
+      console.error("Erro ao alternar disponibilidade:", falha);
+      setErroDisponibilidade(falha.message || "Não foi possível atualizar. Tente novamente.");
+    } finally {
+      setAlterandoDisponibilidade(false);
+    }
+  }
+
+  // só faz sentido mostrar o aviso de disponibilidade quando ele NÃO está a
+  // meio de um serviço (aí já é óbvio que está "ocupado")
+  const emServicoAtivo = meusPedidos.some((p) => p.status === "em_execucao");
+
+  // "Meus pedidos" = esta semana (inclui atrasados, se houver);
+  // "Próximos" = semanas seguintes — ambos ordenados do mais próximo pro mais distante
+  const { fim: fimDaSemana } = limitesDaSemanaAtual();
+  const pedidosDestaSemana = ordenarPorDataHora(
+    meusPedidos.filter((p) => new Date(`${(p.data || "").slice(0, 10)}T23:59:59`) <= fimDaSemana)
+  );
+  const pedidosProximasSemanas = ordenarPorDataHora(
+    meusPedidos.filter((p) => new Date(`${(p.data || "").slice(0, 10)}T23:59:59`) > fimDaSemana)
+  );
+
+  const pedidos = aba === "meus" ? pedidosDestaSemana : pedidosProximasSemanas;
   const primeiroNome = (utilizador?.nome || "").split(" ")[0];
 
   return (
@@ -292,6 +405,40 @@ function TelaInicio({ utilizador, aoAbrirPedido }) {
           <RefreshCw size={15} className="text-white/60" />
         </button>
       </div>
+
+      {!emServicoAtivo && (
+        <div className="mx-5 mb-4 rounded-2xl p-4" style={{
+          background: disponivelAgora ? "rgba(22,163,74,0.1)" : "rgba(212,24,61,0.1)",
+          border: `1px solid ${disponivelAgora ? "rgba(22,163,74,0.25)" : "rgba(212,24,61,0.25)"}`,
+        }}>
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{
+              background: disponivelAgora ? "rgba(22,163,74,0.15)" : "rgba(212,24,61,0.15)",
+            }}>
+              <Power size={16} color={disponivelAgora ? "#4ade80" : "#f87171"} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[13px] font-semibold" style={{ color: disponivelAgora ? "#4ade80" : "#f87171" }}>
+                {disponivelAgora ? "Você está disponível" : "Você está indisponível"}
+              </p>
+              <p className="text-[11px]" style={{ color: "rgba(255,255,255,0.4)" }}>
+                {disponivelAgora ? "A receber novos pedidos próximos" : "Não vai receber novos pedidos agora"}
+              </p>
+            </div>
+            <button onClick={lidarComAlternarDisponibilidade} disabled={alterandoDisponibilidade}
+              className="text-[12px] font-semibold px-3 py-2 rounded-xl flex-shrink-0 disabled:opacity-60"
+              style={{
+                background: disponivelAgora ? "rgba(212,24,61,0.15)" : "rgba(22,163,74,0.15)",
+                color: disponivelAgora ? "#f87171" : "#4ade80",
+              }}>
+              {alterandoDisponibilidade ? "..." : disponivelAgora ? "Ficar indisponível" : "Ficar disponível"}
+            </button>
+          </div>
+          {erroDisponibilidade && (
+            <p className="text-[11px] mt-2" style={{ color: "#f87171" }}>{erroDisponibilidade}</p>
+          )}
+        </div>
+      )}
 
       <div className="flex gap-3 px-5 mb-4">
         <div className="flex-1 rounded-2xl p-4" style={{ background: "rgba(22,163,74,0.1)", border: "1px solid rgba(22,163,74,0.2)" }}>
@@ -326,11 +473,12 @@ function TelaInicio({ utilizador, aoAbrirPedido }) {
             <p className="text-sm mb-3" style={{ color: "rgba(255,255,255,0.4)" }}>Erro ao carregar pedidos</p>
             <button onClick={carregar} className="text-[13px] font-semibold px-4 py-2 rounded-xl" style={{ background: "rgba(255,255,255,0.08)", color: "white" }}>Tentar novamente</button>
           </div>
+
         ) : pedidos.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16">
             <div className="text-5xl mb-4">📋</div>
             <p className="text-sm" style={{ color: "rgba(255,255,255,0.3)" }}>
-              {aba === "proximos" ? "Nenhum pedido próximo. Ative a localização no Perfil." : "Nenhum pedido no momento"}
+              {aba === "proximos" ? "Nenhum pedido agendado para as próximas semanas." : "Nenhum pedido agendado para esta semana."}
             </p>
           </div>
         ) : (
@@ -348,6 +496,8 @@ function TelaDetalhePedido({ pedidoId, aoVoltar, aoCheckin, minhaLocalizacao }) 
   const [estado, setEstado] = useState("carregando");
   const [aceitando, setAceitando] = useState(false);
   const [erro, setErro] = useState("");
+  const [mostrarSeletorDuracao, setMostrarSeletorDuracao] = useState(false);
+  const [duracaoEscolhidaMinutos, setDuracaoEscolhidaMinutos] = useState(120);
 
   async function carregar() {
     setEstado("carregando");
@@ -366,7 +516,8 @@ function TelaDetalhePedido({ pedidoId, aoVoltar, aoCheckin, minhaLocalizacao }) 
     setAceitando(true);
     setErro("");
     try {
-      await aceitarPedido(pedidoId);
+      await aceitarPedido(pedidoId, duracaoEscolhidaMinutos);
+      setMostrarSeletorDuracao(false);
       await carregar();
     } catch (falha) {
       setErro(falha.message);
@@ -414,7 +565,6 @@ function TelaDetalhePedido({ pedidoId, aoVoltar, aoCheckin, minhaLocalizacao }) 
             </div>
             <div className="flex-1">
               <h3 className="text-white font-bold text-[17px]">{pedido.nome_cliente}</h3>
-              <p className="text-[13px]" style={{ color: "rgba(255,255,255,0.5)" }}>{pedido.nome_categoria}</p>
             </div>
             <Badge status={pedido.status} />
           </div>
@@ -482,13 +632,40 @@ function TelaDetalhePedido({ pedidoId, aoVoltar, aoCheckin, minhaLocalizacao }) 
             <Navigation size={15} /> Abrir no Google Maps
           </button>
         )}
-        {pedido.status === "pendente" && (
-          <button onClick={lidarComAceitar} disabled={aceitando}
-            className="flex items-center justify-center gap-2 rounded-2xl py-4 font-bold text-[15px] transition-transform active:scale-[0.97] disabled:opacity-60"
+        {pedido.status === "pendente" && !mostrarSeletorDuracao && (
+          <button onClick={() => setMostrarSeletorDuracao(true)}
+            className="flex items-center justify-center gap-2 rounded-2xl py-4 font-bold text-[15px] transition-transform active:scale-[0.97]"
             style={{ background: "white", color: "#030213" }}>
-            {aceitando ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
-            {aceitando ? "A aceitar..." : "Aceitar pedido"}
+            <Check size={16} /> Aceitar pedido
           </button>
+        )}
+        {pedido.status === "pendente" && mostrarSeletorDuracao && (
+          <div className="rounded-2xl p-4" style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}>
+            <p className="text-white text-[14px] font-semibold mb-1">Quanto tempo vai durar?</p>
+            <p className="text-[12px] mb-3" style={{ color: "rgba(255,255,255,0.45)" }}>
+              Obrigatório — define até quando você fica indisponível para outros pedidos.
+            </p>
+            <div className="mb-3">
+              <SeletorDuracaoRelogio valorMinutos={duracaoEscolhidaMinutos} aoMudar={setDuracaoEscolhidaMinutos} />
+            </div>
+            {erro && (
+              <div className="mb-3 flex items-center gap-2 text-red-400 text-[13px]">
+                <AlertCircle size={14} /><span>{erro}</span>
+              </div>
+            )}
+            <div className="flex gap-2">
+              <button onClick={() => setMostrarSeletorDuracao(false)}
+                className="flex-1 py-3 rounded-xl text-[14px] font-semibold"
+                style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.6)" }}>
+                Cancelar
+              </button>
+              <button onClick={lidarComAceitar} disabled={aceitando}
+                className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-[14px] font-bold disabled:opacity-60"
+                style={{ background: "white", color: "#030213" }}>
+                {aceitando ? <Loader2 size={16} className="animate-spin" /> : "Confirmar"}
+              </button>
+            </div>
+          </div>
         )}
         {pedido.status === "aceite" && (
           <button onClick={() => aoCheckin(pedido)}
@@ -511,14 +688,29 @@ function TelaCheckin({ pedido, aoVoltar, aoConfirmar }) {
   const [confirmando, setConfirmando] = useState(false);
   const [erro, setErro] = useState("");
 
+  // a duração estimada é obrigatória antes do check-in — se por algum
+  // motivo o pedido ainda não tiver uma (ex: veio de um fluxo antigo),
+  // pede aqui antes de liberar o check-in
+  const [duracaoDefinida, setDuracaoDefinida] = useState(pedido.duracao_estimada_minutos || null);
+  const [novaDuracao, setNovaDuracao] = useState(pedido.duracao_estimada_minutos || 120);
+  const [salvandoDuracao, setSalvandoDuracao] = useState(false);
+  const [erroDuracao, setErroDuracao] = useState("");
+
   useEffect(() => {
     if (!navigator.geolocation) { setErroLocalizacao("Geolocalização não suportada neste dispositivo."); return; }
+
+    // se demorar demais (ex: sem sinal de GPS, testando num PC sem sensores),
+    // avisa em vez de ficar "Aguardando localização..." para sempre
+    const idTimeout = setTimeout(() => {
+      setErroLocalizacao((atual) => atual || "A demorar para obter a localização. Verifique se o GPS está ativo (em computadores, use o Chrome DevTools > Sensors para simular).");
+    }, 15000);
+
     const idObservador = navigator.geolocation.watchPosition(
-      (posicao) => setPosicaoAtual({ lat: posicao.coords.latitude, lng: posicao.coords.longitude }),
-      () => setErroLocalizacao("Não foi possível obter a sua localização. Verifique as permissões."),
-      { enableHighAccuracy: true, maximumAge: 0 }
+      (posicao) => { clearTimeout(idTimeout); setErroLocalizacao(""); setPosicaoAtual({ lat: posicao.coords.latitude, lng: posicao.coords.longitude }); },
+      () => { clearTimeout(idTimeout); setErroLocalizacao("Não foi possível obter a sua localização. Verifique as permissões."); },
+      { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 }
     );
-    return () => navigator.geolocation.clearWatch(idObservador);
+    return () => { clearTimeout(idTimeout); navigator.geolocation.clearWatch(idObservador); };
   }, []);
 
   const distanciaMetros = posicaoAtual
@@ -532,11 +724,24 @@ function TelaCheckin({ pedido, aoVoltar, aoConfirmar }) {
     setErro("");
     try {
       await fazerCheckin(pedido.id, posicaoAtual.lat, posicaoAtual.lng);
-      aoConfirmar();
+      aoConfirmar(duracaoDefinida);
     } catch (falha) {
       setErro(falha.message);
     } finally {
       setConfirmando(false);
+    }
+  }
+
+  async function confirmarDuracao() {
+    setSalvandoDuracao(true);
+    setErroDuracao("");
+    try {
+      await editarDuracaoEstimada(pedido.id, novaDuracao);
+      setDuracaoDefinida(novaDuracao);
+    } catch (falha) {
+      setErroDuracao(falha.message);
+    } finally {
+      setSalvandoDuracao(false);
     }
   }
 
@@ -551,6 +756,28 @@ function TelaCheckin({ pedido, aoVoltar, aoConfirmar }) {
         <h2 className="text-white font-bold text-[17px]">Check-in</h2>
       </div>
 
+      {!duracaoDefinida ? (
+        <div className="flex-1 flex flex-col px-5 pt-4">
+          <div className="rounded-2xl p-5" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+            <p className="text-white font-semibold text-[15px] mb-1">Antes de fazer check-in...</p>
+            <p className="text-[13px] mb-4" style={{ color: "rgba(255,255,255,0.5)" }}>
+              Defina quanto tempo o serviço deve durar. Isso é obrigatório para o sistema saber quando você fica disponível de novo.
+            </p>
+            <SeletorDuracaoRelogio valorMinutos={novaDuracao} aoMudar={setNovaDuracao} />
+            {erroDuracao && (
+              <div className="mt-3 flex items-center gap-2 text-red-400 text-[13px]">
+                <AlertCircle size={14} /><span>{erroDuracao}</span>
+              </div>
+            )}
+            <button onClick={confirmarDuracao} disabled={salvandoDuracao}
+              className="w-full mt-4 flex items-center justify-center gap-2 rounded-2xl py-3.5 font-bold text-[14px] disabled:opacity-60"
+              style={{ background: "white", color: "#030213" }}>
+              {salvandoDuracao ? <Loader2 size={16} className="animate-spin" /> : "Confirmar duração"}
+            </button>
+          </div>
+        </div>
+      ) : (
+      <>
       <div className="flex-1 flex flex-col px-5">
         <div className="flex flex-col items-center py-10">
           <div className="relative w-44 h-44 flex items-center justify-center mb-6">
@@ -621,6 +848,8 @@ function TelaCheckin({ pedido, aoVoltar, aoConfirmar }) {
           {confirmando ? "A confirmar..." : dentroRaio ? "Confirmar Check-in" : "Aguardando localização..."}
         </button>
       </div>
+      </>
+      )}
     </div>
   );
 }
@@ -631,11 +860,85 @@ function TelaEmAndamento({ pedido, checkinHoraISO, aoCheckout }) {
   const [segundos, setSegundos] = useState(() => Math.max(0, Math.floor((Date.now() - new Date(checkinHoraISO).getTime()) / 1000)));
   const [saindo, setSaindo] = useState(false);
   const [erro, setErro] = useState("");
+  const [ajustandoDuracao, setAjustandoDuracao] = useState(false);
+  const [novaDuracaoMinutos, setNovaDuracaoMinutos] = useState((pedido.duracao_estimada_minutos || 120) + 15);
+  const [salvandoDuracao, setSalvandoDuracao] = useState(false);
+  const [duracaoAtual, setDuracaoAtual] = useState(pedido.duracao_estimada_minutos || null);
+
+  // ── Alerta sonoro quando faltam 10min (ou menos) para o fim estimado ──────
+  const [alertaVisivel, setAlertaVisivel] = useState(false);
+  const [novaDuracaoAlerta, setNovaDuracaoAlerta] = useState((duracaoAtual || 120) + 15);
+  const [salvandoAlerta, setSalvandoAlerta] = useState(false);
+  const [erroAlerta, setErroAlerta] = useState("");
+  const intervalBeepRef = useRef(null);
+
+  const minutosDecorridos = Math.floor(segundos / 60);
+  const tempoRestanteMinutos = duracaoAtual != null ? duracaoAtual - minutosDecorridos : null;
 
   useEffect(() => {
     const id = setInterval(() => setSegundos(s => s + 1), 1000);
     return () => clearInterval(id);
   }, []);
+
+  // dispara o alerta assim que faltarem 10min ou menos para o fim estimado
+  useEffect(() => {
+    if (tempoRestanteMinutos != null && tempoRestanteMinutos <= 10 && !alertaVisivel) {
+      setAlertaVisivel(true);
+      setNovaDuracaoAlerta(duracaoAtual + 15);
+    }
+  }, [tempoRestanteMinutos]);
+
+  // toca "beep beep beep" repetidamente enquanto o alerta estiver visível —
+  // só para quando o profissional confirmar uma nova duração
+  useEffect(() => {
+    if (!alertaVisivel) return;
+    function tocarBeeps() {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        [0, 0.28, 0.56].forEach((atraso) => {
+          const osc = ctx.createOscillator();
+          const ganho = ctx.createGain();
+          osc.type = "square";
+          osc.frequency.value = 880;
+          ganho.gain.value = 0.18;
+          osc.connect(ganho);
+          ganho.connect(ctx.destination);
+          osc.start(ctx.currentTime + atraso);
+          osc.stop(ctx.currentTime + atraso + 0.16);
+        });
+      } catch { /* áudio pode não estar disponível em alguns navegadores */ }
+    }
+    tocarBeeps();
+    intervalBeepRef.current = setInterval(tocarBeeps, 4000);
+    return () => clearInterval(intervalBeepRef.current);
+  }, [alertaVisivel]);
+
+  async function lidarComResponderAlerta() {
+    setSalvandoAlerta(true);
+    setErroAlerta("");
+    try {
+      await editarDuracaoEstimada(pedido.id, novaDuracaoAlerta);
+      setDuracaoAtual(novaDuracaoAlerta);
+      setAlertaVisivel(false);
+    } catch (falha) {
+      setErroAlerta(falha.message);
+    } finally {
+      setSalvandoAlerta(false);
+    }
+  }
+
+  async function lidarComSalvarDuracao() {
+    setSalvandoDuracao(true);
+    try {
+      await editarDuracaoEstimada(pedido.id, novaDuracaoMinutos);
+      setDuracaoAtual(novaDuracaoMinutos);
+      setAjustandoDuracao(false);
+    } catch (falha) {
+      setErro(falha.message);
+    } finally {
+      setSalvandoDuracao(false);
+    }
+  }
 
   async function lidarComCheckout() {
     setSaindo(true);
@@ -661,7 +964,7 @@ function TelaEmAndamento({ pedido, checkinHoraISO, aoCheckout }) {
   }
 
   return (
-    <div className="flex flex-col h-full" style={{ background: "#030213" }}>
+    <div className="flex flex-col h-full" style={{ background: "#030213", position: "relative" }}>
       <div className="px-5 pt-5 pb-2">
         <div className="flex items-center gap-2 mb-2">
           <div className="w-2 h-2 rounded-full animate-pulse" style={{ background: "#60a5fa" }} />
@@ -689,6 +992,44 @@ function TelaEmAndamento({ pedido, checkinHoraISO, aoCheckout }) {
           </div>
         </div>
 
+        <div className="rounded-2xl p-4 mb-4" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
+          {!ajustandoDuracao ? (
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-wide mb-0.5" style={{ color: "rgba(255,255,255,0.4)" }}>Duração estimada</p>
+                <p className="text-white text-[15px] font-semibold">
+                  {duracaoAtual ? (duracaoAtual >= 60 ? `${Math.floor(duracaoAtual / 60)}h ${duracaoAtual % 60 || ""}`.trim() : `${duracaoAtual}min`) : "Não definida"}
+                </p>
+              </div>
+              <button onClick={() => setAjustandoDuracao(true)}
+                className="text-[12px] font-semibold px-3 py-2 rounded-lg"
+                style={{ background: "rgba(37,99,235,0.15)", color: "#60a5fa" }}>
+                Ajustar
+              </button>
+            </div>
+          ) : (
+            <div>
+              <p className="text-white text-[13px] font-semibold mb-2">Ajustar duração estimada</p>
+              <p className="text-[11px] mb-3" style={{ color: "rgba(255,255,255,0.4)" }}>Use se surgiu um imprevisto — só é possível aumentar a duração.</p>
+              <div className="mb-3">
+                <SeletorDuracaoRelogio valorMinutos={novaDuracaoMinutos} aoMudar={setNovaDuracaoMinutos} minimoMinutos={duracaoAtual} />
+              </div>
+              <div className="flex gap-2">
+                <button onClick={() => setAjustandoDuracao(false)}
+                  className="flex-1 py-2.5 rounded-lg text-[13px] font-semibold"
+                  style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.6)" }}>
+                  Cancelar
+                </button>
+                <button onClick={lidarComSalvarDuracao} disabled={salvandoDuracao}
+                  className="flex-1 py-2.5 rounded-lg text-[13px] font-bold disabled:opacity-60"
+                  style={{ background: "white", color: "#030213" }}>
+                  {salvandoDuracao ? "..." : "Guardar"}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
         {erro && (
           <div className="mb-3 flex items-center gap-2 text-red-400 text-[13px]">
             <AlertCircle size={14} /><span>{erro}</span>
@@ -704,6 +1045,36 @@ function TelaEmAndamento({ pedido, checkinHoraISO, aoCheckout }) {
           </button>
         </div>
       </div>
+
+      {/* Alerta sonoro: tempo estimado quase a acabar — só fecha ao definir
+          uma nova duração (ou ao fazer check-out, que troca de ecrã) */}
+      {alertaVisivel && (
+        <div className="absolute inset-0 flex items-end justify-center p-5" style={{ background: "rgba(3,2,19,0.85)", zIndex: 30 }}>
+          <div className="w-full rounded-3xl p-5" style={{ background: "#0b0d1a", border: "1px solid rgba(248,113,113,0.35)" }}>
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-2.5 h-2.5 rounded-full animate-pulse" style={{ background: "#f87171" }} />
+              <p className="text-[12px] font-bold uppercase tracking-widest" style={{ color: "#f87171" }}>Tempo quase a acabar</p>
+            </div>
+            <p className="text-white font-bold text-[17px] mb-1">
+              {tempoRestanteMinutos > 0 ? `Faltam ${tempoRestanteMinutos} min para o fim estimado` : "O tempo estimado já terminou"}
+            </p>
+            <p className="text-[13px] mb-4" style={{ color: "rgba(255,255,255,0.5)" }}>
+              Ainda não fez check-out. Quanto tempo falta, de verdade, para terminar o serviço?
+            </p>
+            <SeletorDuracaoRelogio valorMinutos={novaDuracaoAlerta} aoMudar={setNovaDuracaoAlerta} minimoMinutos={duracaoAtual} />
+            {erroAlerta && (
+              <div className="mt-3 flex items-center gap-2 text-red-400 text-[13px]">
+                <AlertCircle size={14} /><span>{erroAlerta}</span>
+              </div>
+            )}
+            <button onClick={lidarComResponderAlerta} disabled={salvandoAlerta}
+              className="w-full mt-4 flex items-center justify-center gap-2 rounded-2xl py-3.5 font-bold text-[14px] disabled:opacity-60"
+              style={{ background: "white", color: "#030213" }}>
+              {salvandoAlerta ? <Loader2 size={16} className="animate-spin" /> : "Atualizar duração"}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -924,7 +1295,16 @@ function TelaHistorico() {
 // ── Tela: Perfil ───────────────────────────────────────────────────────────────
 
 function TelaPerfil({ utilizador, aoSair }) {
-  const dias = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
+  // valores sem acento (formato do banco); rótulo com acento só para exibição
+  const dias = [
+    { valor: "Domingo", rotulo: "Dom" },
+    { valor: "Segunda", rotulo: "Seg" },
+    { valor: "Terca", rotulo: "Ter" },
+    { valor: "Quarta", rotulo: "Qua" },
+    { valor: "Quinta", rotulo: "Qui" },
+    { valor: "Sexta", rotulo: "Sex" },
+    { valor: "Sabado", rotulo: "Sáb" },
+  ];
   const [perfil, setPerfil] = useState(null);
   const [diasAtivos, setDiasAtivos] = useState([]);
   const [salvando, setSalvando] = useState(false);
@@ -933,7 +1313,12 @@ function TelaPerfil({ utilizador, aoSair }) {
     try {
       const dados = await getPerfil();
       setPerfil(dados);
-      setDiasAtivos(dados.disponibilidade || []);
+      // normaliza acentos de dados antigos ("Terça" -> "Terca") para os
+      // botões de dia marcarem corretamente
+      const semAcento = (dados.disponibilidade || []).map((d) =>
+        String(d).normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim()
+      );
+      setDiasAtivos(semAcento);
     } catch {
       // se falhar, mantém a tela com os dados básicos do login
     }
@@ -999,16 +1384,16 @@ function TelaPerfil({ utilizador, aoSair }) {
         </div>
         <div className="flex gap-2 flex-wrap">
           {dias.map((d) => {
-            const ativo = diasAtivos.includes(d);
+            const ativo = diasAtivos.includes(d.valor);
             return (
-              <button key={d} onClick={() => toggleDia(d)}
+              <button key={d.valor} onClick={() => toggleDia(d.valor)}
                 className="w-10 h-10 rounded-xl text-[12px] font-semibold transition-all active:scale-90"
                 style={{
                   background: ativo ? "rgba(22,163,74,0.15)" : "rgba(255,255,255,0.05)",
                   border: `1px solid ${ativo ? "rgba(22,163,74,0.4)" : "rgba(255,255,255,0.08)"}`,
                   color: ativo ? "#4ade80" : "rgba(255,255,255,0.3)",
                 }}>
-                {d.slice(0, 3)}
+                {d.rotulo}
               </button>
             );
           })}
@@ -1140,7 +1525,7 @@ export default function App() {
       );
       if (tela === "checkin") return (
         <TelaCheckin pedido={params.pedido} aoVoltar={voltar}
-          aoConfirmar={() => lidarComConfirmarCheckin(params.pedido)} />
+          aoConfirmar={(duracaoAtualizada) => lidarComConfirmarCheckin({ ...params.pedido, duracao_estimada_minutos: duracaoAtualizada })} />
       );
       if (tela === "emAndamento") return (
         <TelaEmAndamento pedido={params.pedido} checkinHoraISO={params.checkinHoraISO}

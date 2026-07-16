@@ -68,8 +68,17 @@ export const getMeusPedidos = () => pedidoAutenticado("/trabalhador/pedidos");
 export const getPedidosProximos = () => pedidoAutenticado("/trabalhador/pedidos/proximos");
 export const getPedido = (id) => pedidoAutenticado(`/trabalhador/pedidos/${id}`);
 
-export const aceitarPedido = (id) =>
-  pedidoAutenticado(`/trabalhador/pedidos/${id}/aceitar`, { method: "PUT" });
+export const aceitarPedido = (id, duracao_estimada_minutos) =>
+  pedidoAutenticado(`/trabalhador/pedidos/${id}/aceitar`, {
+    method: "PUT",
+    body: JSON.stringify({ duracao_estimada_minutos }),
+  });
+
+export const editarDuracaoEstimada = (id, duracao_estimada_minutos) =>
+  pedidoAutenticado(`/trabalhador/pedidos/${id}/duracao-estimada`, {
+    method: "PUT",
+    body: JSON.stringify({ duracao_estimada_minutos }),
+  });
 
 export const fazerCheckin = (id, latitude, longitude) =>
   pedidoAutenticado(`/trabalhador/pedidos/${id}/checkin`, {
@@ -100,4 +109,10 @@ export const atualizarDisponibilidade = (disponibilidade) =>
   pedidoAutenticado("/trabalhador/perfil/disponibilidade", {
     method: "PUT",
     body: JSON.stringify({ disponibilidade }),
+  });
+
+export const atualizarDisponivelAgora = (disponivel) =>
+  pedidoAutenticado("/trabalhador/disponivel-agora", {
+    method: "PUT",
+    body: JSON.stringify({ disponivel }),
   });

@@ -69,14 +69,12 @@ router.get("/", async (req, res) => {
     const [linhas] = await pool.query(query, valores);
     let ids = linhas.map((l) => l.id);
 
-    // se o cliente já escolheu data (e opcionalmente hora), filtra só quem
-    // está disponível nesse dia da semana e sem conflito de agenda
-    let disponiveis = null;
-    if (data) {
-      disponiveis = await filtrarDisponiveis(ids, data, hora);
-    }
+    // sempre filtra quem está manualmente pausado ("ficar indisponível" no
+    // app); se o cliente já escolheu data (e opcionalmente hora), também
+    // filtra quem está disponível nesse dia da semana e sem conflito de agenda
+    const disponiveis = await filtrarDisponiveis(ids, data, hora);
 
-    const linhasFiltradas = disponiveis ? linhas.filter((l) => disponiveis.has(l.id)) : linhas;
+    const linhasFiltradas = linhas.filter((l) => disponiveis.has(l.id));
     ids = linhasFiltradas.map((l) => l.id);
 
     const { competenciasPorId, disponibilidadePorId } = await buscarCompetenciasEDisponibilidade(ids);
@@ -117,6 +115,26 @@ router.get("/:id", async (req, res) => {
     res.status(500).json({
       mensagem: "Erro ao obter profissional",
     });
+  }
+});
+
+// LISTAR AVALIAÇÕES APROVADAS DE UM PROFISSIONAL (público)
+router.get("/:id/avaliacoes", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const [linhas] = await pool.query(
+      `SELECT nome_cliente, nota, comentario, criado_em
+       FROM avaliacoes
+       WHERE profissional_id = ? AND status = 'aprovado'
+       ORDER BY criado_em DESC`,
+      [id]
+    );
+
+    res.json({ total: linhas.length, avaliacoes: linhas });
+  } catch (erro) {
+    console.error(erro);
+    res.status(500).json({ mensagem: "Erro ao obter avaliações" });
   }
 });
 

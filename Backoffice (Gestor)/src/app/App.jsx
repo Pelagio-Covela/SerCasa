@@ -1,11 +1,14 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import * as XLSX from "xlsx";
 import {
   LayoutDashboard, Calendar, Users, LogOut, Menu, X,
   Eye, EyeOff, MoreVertical, Search,
   Plus, CheckCircle, AlertCircle, RefreshCw,
   Phone, MapPin, Clock, Package, TrendingUp,
-  Sun, Moon, Map, Table2, LocateFixed, Navigation,
+  Sun, Moon, Map, Table2, LocateFixed, Navigation, Settings,
   ShieldCheck, UserCog, KeyRound, Tag, Trash2, Pencil,
+  Wallet, TrendingDown, Banknote, Filter, Star, Download,
+  Home, Droplet, ChefHat, Leaf, Zap, PaintBucket, Hammer, Ruler, Wind, Shield, Car, Baby, Shirt,
 } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
@@ -17,11 +20,14 @@ import "leaflet/dist/leaflet.css";
 import {
   login, guardarSessao, limparSessao, obterUtilizadorGuardado,
   getDashboard,
-  getAgendamentos, criarAgendamento, atribuirAgendamento, cancelarAgendamento,
+  getAgendamentos, criarAgendamento, atribuirAgendamento, cancelarAgendamento, marcarPago,
   getProfissionais, criarProfissional, alterarEstadoProfissional,
   editarProfissional, excluirProfissional,
   getCategorias, criarCategoria, editarCategoria, removerCategoria,
-  getGestores, criarGestor, editarGestor, alterarEstadoGestor, resetarSenhaGestor,
+  getGestores, criarGestor, editarGestor, alterarEstadoGestor, resetarSenhaGestor, resetarSenhaTrabalhador,
+  getConfiguracoes, atualizarConfiguracao, trocarMinhaSenha,
+  getFinanceiro, marcarPagoProfissional,
+  getAvaliacoes, aprovarAvaliacao, rejeitarAvaliacao,
 } from "./api.js";
 
 // Fix leaflet default marker icons in Vite/webpack
@@ -57,10 +63,14 @@ function makePinIcon(color = "#030213") {
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
+// Regra de negócio: Pendente = atribuído mas ainda sem check-in;
+// Em execução = check-in feito, check-out ainda não; Concluído = os dois feitos.
+// "aceite" e "a_caminho" são estados internos anteriores ao check-in, por
+// isso aparecem visualmente como "Pendente" (mesma cor/rótulo).
 const STATUS_MAP = {
   pendente:     { label: "Pendente",     bg: "#f3f4f6", color: "#6b7280",  dot: "#9ca3af"  },
-  aceite:       { label: "Aceite",       bg: "#eff6ff", color: "#2563eb",  dot: "#3b82f6"  },
-  a_caminho:    { label: "A caminho",    bg: "#f5f3ff", color: "#7c3aed",  dot: "#8b5cf6"  },
+  aceite:       { label: "Pendente",     bg: "#f3f4f6", color: "#6b7280",  dot: "#9ca3af"  },
+  a_caminho:    { label: "Pendente",     bg: "#f3f4f6", color: "#6b7280",  dot: "#9ca3af"  },
   em_execucao:  { label: "Em execução",  bg: "#fffbeb", color: "#d97706",  dot: "#f59e0b"  },
   concluido:    { label: "Concluído",    bg: "#f0fdf4", color: "#16a34a",  dot: "#22c55e"  },
   cancelado:    { label: "Cancelado",    bg: "#fff1f2", color: "#be123c",  dot: "#f43f5e"  },
@@ -68,8 +78,8 @@ const STATUS_MAP = {
 
 const STATUS_DARK = {
   pendente:     { bg: "#1f2937", color: "#9ca3af",  dot: "#6b7280"  },
-  aceite:       { bg: "#1e3a5f", color: "#93c5fd",  dot: "#3b82f6"  },
-  a_caminho:    { bg: "#2e1f5e", color: "#c4b5fd",  dot: "#8b5cf6"  },
+  aceite:       { bg: "#1f2937", color: "#9ca3af",  dot: "#6b7280"  },
+  a_caminho:    { bg: "#1f2937", color: "#9ca3af",  dot: "#6b7280"  },
   em_execucao:  { bg: "#3b2700", color: "#fcd34d",  dot: "#f59e0b"  },
   concluido:    { bg: "#052e16", color: "#6ee7b7",  dot: "#22c55e"  },
   cancelado:    { bg: "#4c0519", color: "#fda4af",  dot: "#f43f5e"  },
@@ -77,6 +87,15 @@ const STATUS_DARK = {
 
 // Converte os campos separados `data` (DATE) e `hora` (TIME) vindos do
 // backend numa string amigável para exibir nas tabelas.
+// Regra de negócio: Pendente = atribuído ao profissional mas ainda sem
+// check-in (inclui os estados internos "aceite" e "a_caminho", anteriores
+// ao check-in); Em execução = check-in feito, sem check-out ainda;
+// Concluído = check-in e check-out feitos.
+function grupoDeStatus(status) {
+  if (status === "aceite" || status === "a_caminho") return "pendente";
+  return status;
+}
+
 function formatarDataHora(agendamento) {
   if (!agendamento.data) return "—";
   const data = new Date(agendamento.data);
@@ -85,7 +104,50 @@ function formatarDataHora(agendamento) {
   return hora ? `${dataFormatada} ${hora}` : dataFormatada;
 }
 
-const DIAS_SEMANA = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
+// Dias guardados SEM acento no banco (imune a problemas de encoding na
+// importação de SQLs). Para mostrar ao utilizador, usar ROTULO_DIA.
+const DIAS_SEMANA = ["Domingo", "Segunda", "Terca", "Quarta", "Quinta", "Sexta", "Sabado"];
+const ROTULO_DIA = { Terca: "Terça", Sabado: "Sábado" };
+
+function normalizarDia(dia) {
+  return String(dia || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+}
+
+// Garante o indicativo de Moçambique (+258) no telefone do profissional.
+// Se já tiver +258, mantém como está. Se não tiver, adiciona automaticamente
+// (assumindo que o gestor só esqueceu o indicativo). Depois valida se o
+// número tem o formato certo: +258 seguido de 9 dígitos começando por 8.
+// Devolve { valor, valido, erro } — "valor" já é o número corrigido para
+// preencher de volta no campo.
+function normalizarTelefoneMocambicano(telefoneDigitado) {
+  let valor = String(telefoneDigitado || "").trim();
+  if (!valor) return { valor: "", valido: true, erro: null }; // campo opcional/vazio, nada a validar
+
+  const semEspacos = valor.replace(/[\s-]/g, "");
+
+  if (!semEspacos.startsWith("+258")) {
+    // só dígitos que sobraram (o gestor pode ter digitado com ou sem o "0" local)
+    const apenasDigitos = semEspacos.replace(/\D/g, "").replace(/^0/, "");
+    valor = `+258 ${apenasDigitos}`;
+  }
+
+  const digitosDepoisDoIndicativo = valor.replace(/[\s-]/g, "").replace("+258", "");
+
+  if (!/^8\d{8}$/.test(digitosDepoisDoIndicativo)) {
+    return {
+      valor,
+      valido: false,
+      erro: "Número inválido. Deve ter +258 seguido de 9 dígitos começando por 8 (ex: +258 84 123 4567).",
+    };
+  }
+
+  return { valor, valido: true, erro: null };
+}
+
+function rotuloDia(dia) {
+  const d = normalizarDia(dia);
+  return ROTULO_DIA[d] || d;
+}
 
 // Nome do dia da semana (em português) a partir de uma data "YYYY-MM-DD"
 function diaDaSemana(dataStr) {
@@ -98,23 +160,47 @@ function diaDaSemana(dataStr) {
 //  - não tiver marcado nenhuma disponibilidade ainda (assume-se disponível todos os dias), OU
 //  - tiver esse dia da semana marcado como disponível
 // E também não pode já ter outro agendamento na mesma data+hora.
+// duração assumida quando o profissional ainda não definiu a duração
+// estimada (só define isso no app, depois de aceitar o pedido) + margem de
+// folga entre serviços — mesma regra usada no backend (utils/disponibilidade.js)
+const DURACAO_PADRAO_MINUTOS = 120;
+const MARGEM_BUFFER_MINUTOS = 30;
+
+function horaParaMinutos(horaStr) {
+  const [h, m] = String(horaStr).split(":").map(Number);
+  return h * 60 + m;
+}
+
 function profissionalDisponivel(profissional, agendamentos, data, hora, agendamentoIdIgnorar) {
-  if (!data) return true; // sem data escolhida ainda, não filtra
+  // pausado manualmente ("ficar indisponível" no app) — nunca aparece,
+  // mesmo sem data escolhida ainda
+  if (profissional.disponivel_agora === false) return false;
+  if (!data) return true; // sem data escolhida ainda, não filtra pelo resto
   const dia = diaDaSemana(data);
-  const disp = profissional.disponibilidade || [];
+  const disp = (profissional.disponibilidade || []).map(normalizarDia);
   const respeitaDisponibilidade = disp.length === 0 || disp.includes(dia);
   if (!respeitaDisponibilidade) return false;
 
   if (hora) {
     const dataAlvo = data.slice(0, 10);
-    const horaAlvo = hora.slice(0, 5);
-    const temConflito = agendamentos.some(a =>
-      a.id !== agendamentoIdIgnorar &&
-      a.profissional_id === profissional.id &&
-      a.status !== "cancelado" &&
-      (a.data || "").toString().slice(0, 10) === dataAlvo &&
-      (a.hora || "").toString().slice(0, 5) === horaAlvo
-    );
+    const alvoMinutos = horaParaMinutos(hora.slice(0, 5));
+    const temConflito = agendamentos.some(a => {
+      if (a.id === agendamentoIdIgnorar) return false;
+      if (a.profissional_id !== profissional.id) return false;
+      if (a.status === "cancelado") return false;
+      if ((a.data || "").toString().slice(0, 10) !== dataAlvo) return false;
+      const inicio = horaParaMinutos((a.hora || "0:0").toString().slice(0, 5));
+      let fim;
+      if (a.status === "concluido" && a.checkout_hora) {
+        // já sabemos a hora real em que terminou — usa isso em vez da
+        // duração estimada, que pode estar desatualizada
+        const checkout = new Date(a.checkout_hora);
+        fim = (checkout.getHours() * 60 + checkout.getMinutes()) + MARGEM_BUFFER_MINUTOS;
+      } else {
+        fim = inicio + (a.duracao_estimada_minutos ?? a.duracao_minutos ?? DURACAO_PADRAO_MINUTOS) + MARGEM_BUFFER_MINUTOS;
+      }
+      return alvoMinutos >= inicio && alvoMinutos < fim;
+    });
     if (temConflito) return false;
   }
   return true;
@@ -278,7 +364,7 @@ function ErrorState({ onRetry }) {
   );
 }
 
-function Input({ label, type = "text", value, onChange, placeholder, erro, suffix, autoFocus, disabled }) {
+function Input({ label, type = "text", value, onChange, onBlur, placeholder, erro, suffix, autoFocus, disabled }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
       {label && <label style={{ fontSize: 13, fontWeight: 500, color: "var(--foreground)" }}>{label}</label>}
@@ -287,6 +373,7 @@ function Input({ label, type = "text", value, onChange, placeholder, erro, suffi
           type={type}
           value={value}
           onChange={onChange}
+          onBlur={onBlur}
           placeholder={placeholder}
           autoFocus={autoFocus}
           disabled={disabled}
@@ -879,7 +966,7 @@ function AgendamentosScreen({ escuro }) {
   const [modalNovo, definirModalNovo] = useState(false);
   const [salvando, definirSalvando] = useState(false);
   const [formularioNovo, definirFormularioNovo] = useState({
-    nome_cliente: "", telefone: "", endereco: "", categoria_id: "", data: "", hora: "", profissional_id: "",
+    nome_cliente: "", telefone: "", email_cliente: "", endereco: "", categoria_id: "", data: "", hora: "", profissional_id: "",
   });
   const [coordenadasNovo, definirCoordenadasNovo] = useState(null);
   const [erroNovo, definirErroNovo] = useState("");
@@ -912,8 +999,6 @@ function AgendamentosScreen({ escuro }) {
   const statusTabs = [
     { key: "todos",       label: "Todos"        },
     { key: "pendente",    label: "Pendente"     },
-    { key: "aceite",      label: "Aceite"       },
-    { key: "a_caminho",   label: "A caminho"    },
     { key: "em_execucao", label: "Em execução"  },
     { key: "concluido",   label: "Concluído"    },
     { key: "cancelado",   label: "Cancelado"    },
@@ -922,7 +1007,7 @@ function AgendamentosScreen({ escuro }) {
   const categoriasUsadas = ["", ...Array.from(new Set(agendamentos.map(a => a.nome_categoria).filter(Boolean)))];
 
   const filtered = agendamentos.filter(a => {
-    const okStatus     = filtroStatus === "todos" || a.status === filtroStatus;
+    const okStatus     = filtroStatus === "todos" || grupoDeStatus(a.status) === filtroStatus;
     const okCategoria  = !filtroCategoria || a.nome_categoria === filtroCategoria;
     const okAtribuicao = filtroAtribuicao === "todos"
       || (filtroAtribuicao === "atribuido"     &&  a.nome_profissional)
@@ -969,10 +1054,24 @@ function AgendamentosScreen({ escuro }) {
     }
   }
 
+  async function lidarComMarcarPago(agendamento) {
+    if (!window.confirm(`Confirmar que o pagamento de ${agendamento.nome_cliente} (MT ${Number(agendamento.valor_total || 0).toLocaleString("pt-MZ")}) foi recebido?`)) return;
+    try {
+      await marcarPago(agendamento.id);
+      await carregarAgendamentos();
+    } catch (falha) {
+      alert(falha.message);
+    }
+  }
+
   async function lidarComNovoAgendamento(e) {
     e.preventDefault();
-    if (!formularioNovo.nome_cliente || !formularioNovo.telefone || !formularioNovo.endereco || !formularioNovo.categoria_id || !formularioNovo.data || !formularioNovo.hora) {
-      definirErroNovo("Preencha todos os campos obrigatórios (*).");
+    if (!formularioNovo.nome_cliente || !formularioNovo.telefone || !formularioNovo.email_cliente || !formularioNovo.endereco || !formularioNovo.categoria_id || !formularioNovo.data || !formularioNovo.hora) {
+      definirErroNovo("Preencha todos os campos obrigatórios (*), incluindo o e-mail do cliente.");
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formularioNovo.email_cliente)) {
+      definirErroNovo("Formato de e-mail inválido. Exemplo: cliente@exemplo.co.mz");
       return;
     }
     definirSalvando(true);
@@ -980,6 +1079,7 @@ function AgendamentosScreen({ escuro }) {
       await criarAgendamento({
         nome_cliente: formularioNovo.nome_cliente,
         telefone: formularioNovo.telefone,
+        email_cliente: formularioNovo.email_cliente,
         endereco: formularioNovo.endereco,
         categoria_id: formularioNovo.categoria_id,
         data: formularioNovo.data,
@@ -990,7 +1090,7 @@ function AgendamentosScreen({ escuro }) {
       });
       await carregarAgendamentos();
       definirModalNovo(false);
-      definirFormularioNovo({ nome_cliente: "", telefone: "", endereco: "", categoria_id: "", data: "", hora: "", profissional_id: "" });
+      definirFormularioNovo({ nome_cliente: "", telefone: "", email_cliente: "", endereco: "", categoria_id: "", data: "", hora: "", profissional_id: "" });
       definirCoordenadasNovo(null);
       definirErroNovo("");
     } catch (falha) {
@@ -1110,7 +1210,7 @@ function AgendamentosScreen({ escuro }) {
         {/* Linha 3: tabs de status */}
         <div style={{ display: "flex", gap: 4, padding: 4, borderRadius: "var(--radius)", background: "var(--muted)", width: "fit-content", flexWrap: "wrap" }}>
           {statusTabs.map(t => {
-            const count = t.key === "todos" ? agendamentos.length : agendamentos.filter(a => a.status === t.key).length;
+            const count = t.key === "todos" ? agendamentos.length : agendamentos.filter(a => grupoDeStatus(a.status) === t.key).length;
             return (
               <button key={t.key} onClick={() => definirFiltroStatus(t.key)} style={{
                 padding: "5px 11px", borderRadius: "calc(var(--radius) - 2px)",
@@ -1161,7 +1261,7 @@ function AgendamentosScreen({ escuro }) {
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
               <thead>
                 <tr style={{ borderBottom: "1px solid var(--border)", background: "var(--secondary)" }}>
-                  {["Cliente", "Telefone", "Profissional", "Data/Hora", "Endereço", "Status", "Acções"].map(h => (
+                  {["Cliente", "Telefone", "Profissional", "Data/Hora", "Endereço", "Status", "Pagamento", "Acções"].map(h => (
                     <th key={h} style={{ padding: "10px 16px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "var(--muted-foreground)", whiteSpace: "nowrap", letterSpacing: "0.04em", textTransform: "uppercase" }}>{h}</th>
                   ))}
                 </tr>
@@ -1208,10 +1308,42 @@ function AgendamentosScreen({ escuro }) {
                       <Badge status={a.status} escuro={escuro} />
                     </td>
                     <td style={{ padding: "12px 16px", whiteSpace: "nowrap" }}>
+                      {a.status === "concluido" && a.valor_total != null ? (
+                        <div style={{ fontSize: 12, lineHeight: 1.5 }}>
+                          <div style={{ fontWeight: 600 }}>MT {Number(a.valor_total).toLocaleString("pt-MZ")}</div>
+                          <div style={{ color: "var(--muted-foreground)" }}>
+                            Prof: MT {Number(a.valor_profissional || 0).toLocaleString("pt-MZ")} · Taxa: MT {Number(a.taxa_app || 0).toLocaleString("pt-MZ")}
+                          </div>
+                          <span style={{
+                            fontSize: 10, fontWeight: 600, padding: "1px 7px", borderRadius: 99,
+                            background: a.status_pagamento === "pago" ? "rgba(22,163,74,0.12)" : a.status_pagamento === "processando" ? "rgba(37,99,235,0.14)" : "rgba(245,158,11,0.14)",
+                            color: a.status_pagamento === "pago" ? "#16a34a" : a.status_pagamento === "processando" ? "#2563eb" : "#b45309",
+                          }}>
+                            {a.status_pagamento === "pago" ? "Pago" : a.status_pagamento === "processando" ? "A confirmar" : "Pendente"}
+                          </span>
+                          {a.status_pagamento === "processando" && a.metodo_pagamento && (
+                            <div style={{ color: "var(--muted-foreground)", marginTop: 2 }}>
+                              via {a.metodo_pagamento === "carteira_movel" ? "carteira móvel" : "conta bancária"}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>—</span>
+                      )}
+                    </td>
+                    <td style={{ padding: "12px 16px", whiteSpace: "nowrap" }}>
                       <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                         {(a.status === "pendente" || (a.status === "aceite" && !a.nome_profissional)) && (
                           <Btn variant="ghost" size="sm" onClick={() => { definirModalAtribuir(a); definirProfissionalSelecionado(""); }}>
                             Atribuir
+                          </Btn>
+                        )}
+                        {a.status === "concluido" && a.status_pagamento !== "pago" && (
+                          <Btn variant="ghost" size="sm"
+                            style={{ color: "#16a34a", borderColor: "rgba(22,163,74,0.3)" }}
+                            onClick={() => lidarComMarcarPago(a)}
+                          >
+                            Marcar pago
                           </Btn>
                         )}
                         {!["cancelado", "concluido"].includes(a.status) && (
@@ -1362,6 +1494,10 @@ function AgendamentosScreen({ escuro }) {
             <Input label="Telefone *" type="tel" value={formularioNovo.telefone} onChange={nf("telefone")} placeholder="+258 8X XXX XXXX" />
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            <Input label="E-mail *" type="email" value={formularioNovo.email_cliente} onChange={nf("email_cliente")} placeholder="cliente@exemplo.co.mz" />
+            <span style={{ fontSize: 11, color: "var(--muted-foreground)" }}>Necessário para enviar a fatura e o link de pagamento após o serviço.</span>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
             <Input label="Endereço / Localização *" value={formularioNovo.endereco} onChange={nf("endereco")} placeholder="Bairro, rua, número — Cidade" />
             <span style={{ fontSize: 11, color: "var(--muted-foreground)" }}>Preenchido automaticamente ao escolher um ponto no mapa abaixo — pode ajustar manualmente.</span>
           </div>
@@ -1450,11 +1586,24 @@ function ProfissionaisScreen({ escuro }) {
   const [categorias, setCategorias] = useState([]);
   const [modalCadastro, definirModalCadastro] = useState(false);
   const [modalConfirmacao, definirModalConfirmacao] = useState(null);
+  const [modalResetSenha, definirModalResetSenha] = useState(null);
+  const [novaSenhaProfissional, definirNovaSenhaProfissional] = useState("");
+  const [salvandoSenha, definirSalvandoSenha] = useState(false);
+  const [erroResetSenha, definirErroResetSenha] = useState("");
   const [menuAberto, definirMenuAberto] = useState(null);
   const [salvando, definirSalvando] = useState(false);
   const [form, setForm] = useState({ nome: "", email: "", telefone: "", senha: "", categoria_id: "", preco_por_hora: "", experiencia: "", descricao: "", foto: "", competencias: "", disponibilidade: [] });
   const [erroFormulario, definirErroFormulario] = useState("");
+  const [erroTelefone, definirErroTelefone] = useState("");
   const [processandoFoto, definirProcessandoFoto] = useState(false);
+
+  // Ao sair do campo telefone: garante o indicativo +258 automaticamente
+  // (se o gestor esqueceu) e avisa se o resto do número não bater o formato.
+  function lidarComSairTelefone() {
+    const resultado = normalizarTelefoneMocambicano(form.telefone);
+    setForm((v) => ({ ...v, telefone: resultado.valor }));
+    definirErroTelefone(resultado.erro || "");
+  }
 
   async function aoEscolherFoto(evento) {
     const ficheiro = evento.target.files?.[0];
@@ -1518,8 +1667,21 @@ function ProfissionaisScreen({ escuro }) {
       definirErroFormulario("Preencha todos os campos obrigatórios (*) antes de continuar.");
       return;
     }
+    if (!form.competencias.split(",").map((c) => c.trim()).filter(Boolean).length) {
+      definirErroFormulario("Indique pelo menos uma valência (separadas por vírgula).");
+      return;
+    }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
       definirErroFormulario("Formato de e-mail inválido. Exemplo: nome@exemplo.co.mz");
+      return;
+    }
+    // reaplica a validação/correção do telefone no momento de submeter,
+    // caso o gestor não tenha saído do campo (ex: clicou direto em Cadastrar)
+    const telefoneChecado = normalizarTelefoneMocambicano(form.telefone);
+    if (!telefoneChecado.valido) {
+      setForm((v) => ({ ...v, telefone: telefoneChecado.valor }));
+      definirErroTelefone(telefoneChecado.erro);
+      definirErroFormulario("Corrija o número de telefone antes de continuar.");
       return;
     }
     definirSalvando(true);
@@ -1542,6 +1704,7 @@ function ProfissionaisScreen({ escuro }) {
       definirModalCadastro(false);
       setForm({ nome: "", email: "", telefone: "", senha: "", categoria_id: "", preco_por_hora: "", experiencia: "", descricao: "", foto: "", competencias: "", disponibilidade: [] });
       definirErroFormulario("");
+      definirErroTelefone("");
     } catch (falha) {
       definirErroFormulario(falha.message);
     } finally {
@@ -1564,6 +1727,25 @@ function ProfissionaisScreen({ escuro }) {
       alert(falha.message);
     } finally {
       definirSalvando(false);
+    }
+  }
+
+  async function lidarComResetarSenha(e) {
+    e.preventDefault();
+    if (!novaSenhaProfissional || novaSenhaProfissional.length < 6) {
+      definirErroResetSenha("A nova senha deve ter pelo menos 6 caracteres.");
+      return;
+    }
+    definirSalvandoSenha(true);
+    definirErroResetSenha("");
+    try {
+      await resetarSenhaTrabalhador(modalResetSenha.id, novaSenhaProfissional);
+      definirModalResetSenha(null);
+      alert(`Senha de ${modalResetSenha.nome} redefinida com sucesso. Informe a nova senha diretamente a ele.`);
+    } catch (falha) {
+      definirErroResetSenha(falha.message);
+    } finally {
+      definirSalvandoSenha(false);
     }
   }
 
@@ -1730,6 +1912,19 @@ function ProfissionaisScreen({ escuro }) {
                         {p.ativo ? "Desativar profissional" : "Ativar profissional"}
                       </button>
                       <button
+                        onClick={() => { definirModalResetSenha(p); definirNovaSenhaProfissional(""); definirMenuAberto(null); }}
+                        style={{
+                          display: "flex", alignItems: "center", gap: 6, width: "100%", textAlign: "left",
+                          padding: "10px 14px", background: "none", border: "none",
+                          borderTop: "1px solid var(--border)",
+                          cursor: "pointer", fontSize: 13, color: "var(--foreground)", fontFamily: "inherit",
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.background = "var(--accent)"}
+                        onMouseLeave={e => e.currentTarget.style.background = "none"}
+                      >
+                        <KeyRound size={13} /> Redefinir senha
+                      </button>
+                      <button
                         onClick={() => { definirModalConfirmacao({ prof: p, action: "excluir" }); definirMenuAberto(null); }}
                         style={{
                           display: "flex", alignItems: "center", gap: 6, width: "100%", textAlign: "left",
@@ -1768,7 +1963,7 @@ function ProfissionaisScreen({ escuro }) {
               </div>
 
               {/* Status badge */}
-              <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid var(--border)" }}>
+              <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid var(--border)", display: "flex", gap: 6, flexWrap: "wrap" }}>
                 <span style={{
                   display: "inline-flex", alignItems: "center", gap: 5,
                   fontSize: 11, fontWeight: 600, padding: "3px 9px", borderRadius: 99,
@@ -1778,6 +1973,16 @@ function ProfissionaisScreen({ escuro }) {
                   <span style={{ width: 6, height: 6, borderRadius: "50%", background: p.ativo ? "#22c55e" : "#9ca3af" }} />
                   {p.ativo ? "Ativo" : "Inativo"}
                 </span>
+                {p.disponivel_agora === false && (
+                  <span style={{
+                    display: "inline-flex", alignItems: "center", gap: 5,
+                    fontSize: 11, fontWeight: 600, padding: "3px 9px", borderRadius: 99,
+                    background: escuro ? "#4c0519" : "#fff1f2", color: "#d4183d",
+                  }}>
+                    <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#f43f5e" }} />
+                    Pausado pelo profissional
+                  </span>
+                )}
               </div>
             </div>
           ))}
@@ -1801,7 +2006,7 @@ function ProfissionaisScreen({ escuro }) {
             <Input label="Nome *" value={form.nome} onChange={f("nome")} placeholder="Nome completo" />
             <Input label="E-mail *" type="email" value={form.email} onChange={f("email")} placeholder="email@exemplo.co.mz" />
           </div>
-          <Input label="Telefone" type="tel" value={form.telefone} onChange={f("telefone")} placeholder="+258 8X XXX XXXX" />
+          <Input label="Telefone" type="tel" value={form.telefone} onChange={f("telefone")} onBlur={lidarComSairTelefone} erro={erroTelefone} placeholder="+258 8X XXX XXXX" />
           <Input label="Palavra-passe temporária *" type="password" value={form.senha} onChange={f("senha")} placeholder="Mín. 6 caracteres" />
           <p style={{ margin: "-6px 0 0", fontSize: 11, color: "var(--muted-foreground)" }}>
             O profissional deverá alterar a palavra-passe no primeiro acesso.
@@ -1858,7 +2063,7 @@ function ProfissionaisScreen({ escuro }) {
           </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-            <label style={{ fontSize: 13, fontWeight: 500 }}>Competências</label>
+            <label style={{ fontSize: 13, fontWeight: 500 }}>Valências *</label>
             <input
               value={form.competencias}
               onChange={f("competencias")}
@@ -1869,13 +2074,13 @@ function ProfissionaisScreen({ escuro }) {
                 color: "var(--foreground)", fontSize: 14, outline: "none", fontFamily: "inherit",
               }}
             />
-            <span style={{ fontSize: 11, color: "var(--muted-foreground)" }}>Separe cada competência por vírgula.</span>
+            <span style={{ fontSize: 11, color: "var(--muted-foreground)" }}>Obrigatório. Separe cada valência por vírgula.</span>
           </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
             <label style={{ fontSize: 13, fontWeight: 500 }}>Disponibilidade</label>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-              {["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"].map(dia => {
+              {["Segunda", "Terca", "Quarta", "Quinta", "Sexta", "Sabado", "Domingo"].map(dia => {
                 const selecionado = form.disponibilidade.includes(dia);
                 return (
                   <button
@@ -1895,7 +2100,7 @@ function ProfissionaisScreen({ escuro }) {
                       cursor: "pointer", fontFamily: "inherit",
                     }}
                   >
-                    {dia}
+                    {rotuloDia(dia)}
                   </button>
                 );
               })}
@@ -1941,6 +2146,36 @@ function ProfissionaisScreen({ escuro }) {
               : `Deseja reactivar ${modalConfirmacao.prof.nome}? Voltará a ter acesso à aplicação e poderá receber agendamentos.`
             }
           </p>
+        )}
+      </Modal>
+
+      {/* Redefinir senha do profissional */}
+      <Modal
+        open={!!modalResetSenha}
+        onClose={() => definirModalResetSenha(null)}
+        title="Redefinir senha do profissional"
+        footer={<>
+          <Btn variant="secondary" onClick={() => definirModalResetSenha(null)}>Cancelar</Btn>
+          <Btn disabled={salvandoSenha} onClick={lidarComResetarSenha}>{salvandoSenha ? "A guardar..." : "Redefinir senha"}</Btn>
+        </>}
+      >
+        {modalResetSenha && (
+          <form onSubmit={lidarComResetarSenha} style={{ display: "flex", flexDirection: "column", gap: 13 }}>
+            <p style={{ margin: 0, fontSize: 13, color: "var(--muted-foreground)" }}>
+              Defina uma nova senha temporária para <strong>{modalResetSenha.nome}</strong>. Informe-a diretamente a ele — ele poderá alterá-la depois no app.
+            </p>
+            <Input label="Nova senha *" type="password" value={novaSenhaProfissional} onChange={e => definirNovaSenhaProfissional(e.target.value)} placeholder="Mín. 6 caracteres" />
+            {erroResetSenha && (
+              <div style={{ display: "flex", gap: 8, padding: "9px 12px", borderRadius: "var(--radius)", background: "rgba(212,24,61,0.07)", border: "1px solid rgba(212,24,61,0.2)", fontSize: 13, color: "#d4183d" }}>
+                <AlertCircle size={15} style={{ flexShrink: 0, marginTop: 1 }} /> {erroResetSenha}
+              </div>
+            )}
+            {modalResetSenha.usuario_id == null && (
+              <div style={{ display: "flex", gap: 8, padding: "9px 12px", borderRadius: "var(--radius)", background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.25)", fontSize: 12, color: "#b45309" }}>
+                <AlertCircle size={14} style={{ flexShrink: 0, marginTop: 1 }} /> Este profissional ainda não tem conta de login associada — a redefinição pode falhar.
+              </div>
+            )}
+          </form>
         )}
       </Modal>
 
@@ -2215,7 +2450,84 @@ function GestoresScreen({ escuro }) {
 // ─── Categorias (exclusivo do admin) ───────────────────────────────────────
 
 const ICONES_DISPONIVEIS = ["home", "droplet", "chef-hat", "leaf", "zap", "paint-bucket", "hammer", "ruler", "wind", "shield", "car", "baby", "shirt"];
+// mesmo mapeamento usado no site do cliente (components/CartaoCategoria.jsx),
+// para o ícone escolhido aqui aparecer igual lá
+const ICONE_COMPONENTE = {
+  "home": Home, "droplet": Droplet, "chef-hat": ChefHat, "leaf": Leaf, "zap": Zap,
+  "paint-bucket": PaintBucket, "hammer": Hammer, "ruler": Ruler, "wind": Wind,
+  "shield": Shield, "car": Car, "baby": Baby, "shirt": Shirt,
+};
+
 const CORES_DISPONIVEIS = ["bg-blue-500", "bg-cyan-500", "bg-orange-500", "bg-green-500", "bg-yellow-500", "bg-pink-500", "bg-stone-500", "bg-amber-700", "bg-sky-500", "bg-slate-600", "bg-indigo-500", "bg-rose-400", "bg-teal-500"];
+// valor hex real de cada classe Tailwind, só para desenhar a amostra de cor
+// aqui no backoffice (que usa estilos inline, não Tailwind)
+const COR_HEX = {
+  "bg-blue-500": "#3b82f6", "bg-cyan-500": "#06b6d4", "bg-orange-500": "#f97316",
+  "bg-green-500": "#22c55e", "bg-yellow-500": "#eab308", "bg-pink-500": "#ec4899",
+  "bg-stone-500": "#78716c", "bg-amber-700": "#b45309", "bg-sky-500": "#0ea5e9",
+  "bg-slate-600": "#475569", "bg-indigo-500": "#6366f1", "bg-rose-400": "#fb7185",
+  "bg-teal-500": "#14b8a6",
+};
+
+// Grelha de ícones reais para escolher visualmente, em vez de uma lista de
+// nomes em texto (ex: "paint-bucket") que o gestor teria de adivinhar.
+function SeletorIcone({ valor, aoMudar, corFundo }) {
+  return (
+    <div>
+      <label style={{ fontSize: 13, fontWeight: 500, display: "block", marginBottom: 6 }}>Ícone</label>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 8 }}>
+        {ICONES_DISPONIVEIS.map((nome) => {
+          const IconeComponente = ICONE_COMPONENTE[nome];
+          const selecionado = valor === nome;
+          return (
+            <button key={nome} type="button" onClick={() => aoMudar(nome)}
+              title={nome}
+              style={{
+                width: 38, height: 38, borderRadius: "var(--radius)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                background: selecionado ? (corFundo || "var(--primary)") : "var(--muted)",
+                border: selecionado ? "2px solid var(--foreground)" : "1px solid var(--border)",
+                cursor: "pointer", transition: "transform 0.1s",
+              }}
+              onMouseEnter={e => e.currentTarget.style.transform = "scale(1.08)"}
+              onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}
+            >
+              <IconeComponente size={17} color={selecionado ? "#fff" : "var(--muted-foreground)"} />
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// Grelha de amostras de cor reais (a cor de verdade, não o nome da classe).
+function SeletorCor({ valor, aoMudar }) {
+  return (
+    <div>
+      <label style={{ fontSize: 13, fontWeight: 500, display: "block", marginBottom: 6 }}>Cor</label>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 8 }}>
+        {CORES_DISPONIVEIS.map((classe) => {
+          const selecionado = valor === classe;
+          return (
+            <button key={classe} type="button" onClick={() => aoMudar(classe)}
+              title={classe}
+              style={{
+                width: 32, height: 32, borderRadius: "50%",
+                background: COR_HEX[classe],
+                border: selecionado ? "3px solid var(--foreground)" : "2px solid var(--card)",
+                boxShadow: selecionado ? "0 0 0 1.5px var(--foreground)" : "0 0 0 1px var(--border)",
+                cursor: "pointer", padding: 0, transition: "transform 0.1s",
+              }}
+              onMouseEnter={e => e.currentTarget.style.transform = "scale(1.12)"}
+              onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}
+            />
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 function CategoriasScreen({ escuro }) {
   const [estado, definirEstado] = useState("carregando");
@@ -2310,11 +2622,13 @@ function CategoriasScreen({ escuro }) {
         <EmptyState message="Nenhuma categoria cadastrada." />
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 14 }}>
-          {categorias.map(c => (
+          {categorias.map(c => {
+            const IconeCategoria = ICONE_COMPONENTE[String(c.icone || "").trim().toLowerCase()] || Tag;
+            return (
             <div key={c.id} style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <div style={{ width: 34, height: 34, borderRadius: 8, background: "var(--primary)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <Tag size={16} color="var(--primary-foreground)" />
+                <div style={{ width: 34, height: 34, borderRadius: 8, background: COR_HEX[String(c.cor || "").trim()] || "var(--primary)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <IconeCategoria size={16} color="#fff" />
                 </div>
                 <div style={{ display: "flex", gap: 4 }}>
                   <Btn variant="ghost" size="sm" onClick={() => abrirEditar(c)}><Pencil size={12} /></Btn>
@@ -2327,7 +2641,8 @@ function CategoriasScreen({ escuro }) {
                 {c.descricao && <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginTop: 4 }}>{c.descricao}</div>}
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -2351,8 +2666,8 @@ function CategoriasScreen({ escuro }) {
               disabled={modalForm.modo === "editar"}
             />
             <Input label="Nome *" value={modalForm.dados.nome} onChange={e => atualizarCampo("nome", e.target.value)} placeholder="ex: Pintor" />
-            <Select label="Ícone" value={modalForm.dados.icone} onChange={e => atualizarCampo("icone", e.target.value)} options={ICONES_DISPONIVEIS} />
-            <Select label="Cor" value={modalForm.dados.cor} onChange={e => atualizarCampo("cor", e.target.value)} options={CORES_DISPONIVEIS} />
+            <SeletorIcone valor={modalForm.dados.icone} aoMudar={(v) => atualizarCampo("icone", v)} corFundo={COR_HEX[modalForm.dados.cor]} />
+            <SeletorCor valor={modalForm.dados.cor} aoMudar={(v) => atualizarCampo("cor", v)} />
             <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
               <label style={{ fontSize: 13, fontWeight: 500 }}>Descrição</label>
               <textarea
@@ -2395,6 +2710,575 @@ function CategoriasScreen({ escuro }) {
   );
 }
 
+// ─── Configurações (admin: taxa da app; todos: trocar senha) ───────────────
+
+function ConfiguracoesScreen({ isAdmin }) {
+  const [configuracoes, setConfiguracoes] = useState([]);
+  const [taxa, definirTaxa] = useState("");
+  const [salvandoTaxa, definirSalvandoTaxa] = useState(false);
+  const [mensagemTaxa, definirMensagemTaxa] = useState("");
+
+  const [senhaAtual, definirSenhaAtual] = useState("");
+  const [novaSenha, definirNovaSenha] = useState("");
+  const [confirmarSenha, definirConfirmarSenha] = useState("");
+  const [salvandoSenha, definirSalvandoSenha] = useState(false);
+  const [mensagemSenha, definirMensagemSenha] = useState(null); // { tipo: "ok"|"erro", texto }
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    getConfiguracoes()
+      .then((resposta) => {
+        setConfiguracoes(resposta.configuracoes);
+        const t = resposta.configuracoes.find(c => c.chave === "taxa_app_percentual");
+        if (t) definirTaxa(t.valor);
+      })
+      .catch(() => {});
+  }, [isAdmin]);
+
+  async function lidarComSalvarTaxa(e) {
+    e.preventDefault();
+    definirSalvandoTaxa(true);
+    definirMensagemTaxa("");
+    try {
+      await atualizarConfiguracao("taxa_app_percentual", taxa);
+      definirMensagemTaxa("Taxa atualizada. Vale para os próximos check-outs.");
+    } catch (falha) {
+      definirMensagemTaxa(falha.message);
+    } finally {
+      definirSalvandoTaxa(false);
+    }
+  }
+
+  async function lidarComTrocarSenha(e) {
+    e.preventDefault();
+    if (novaSenha !== confirmarSenha) {
+      definirMensagemSenha({ tipo: "erro", texto: "A confirmação não coincide com a nova senha." });
+      return;
+    }
+    definirSalvandoSenha(true);
+    definirMensagemSenha(null);
+    try {
+      await trocarMinhaSenha(senhaAtual, novaSenha);
+      definirMensagemSenha({ tipo: "ok", texto: "Senha alterada com sucesso." });
+      definirSenhaAtual(""); definirNovaSenha(""); definirConfirmarSenha("");
+    } catch (falha) {
+      definirMensagemSenha({ tipo: "erro", texto: falha.message });
+    } finally {
+      definirSalvandoSenha(false);
+    }
+  }
+
+  const cardStyle = { background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: 20 };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 560 }}>
+      {isAdmin && (
+        <div style={cardStyle}>
+          <h3 style={{ margin: "0 0 4px", fontSize: 15, fontWeight: 700 }}>Taxa da plataforma</h3>
+          <p style={{ margin: "0 0 14px", fontSize: 13, color: "var(--muted-foreground)" }}>
+            Percentagem retida pela ServCasa sobre o valor de cada serviço concluído. O restante vai para o profissional.
+          </p>
+          <form onSubmit={lidarComSalvarTaxa} style={{ display: "flex", gap: 10, alignItems: "flex-end" }}>
+            <div style={{ flex: 1 }}>
+              <Input label="Taxa (%)" type="number" value={taxa} onChange={e => definirTaxa(e.target.value)} placeholder="ex: 20" />
+            </div>
+            <Btn disabled={salvandoTaxa} onClick={lidarComSalvarTaxa}>{salvandoTaxa ? "A guardar..." : "Guardar"}</Btn>
+          </form>
+          {mensagemTaxa && <p style={{ margin: "10px 0 0", fontSize: 12, color: "var(--muted-foreground)" }}>{mensagemTaxa}</p>}
+        </div>
+      )}
+
+      <div style={cardStyle}>
+        <h3 style={{ margin: "0 0 4px", fontSize: 15, fontWeight: 700 }}>Trocar a minha senha</h3>
+        <p style={{ margin: "0 0 14px", fontSize: 13, color: "var(--muted-foreground)" }}>
+          Recomendado após o primeiro acesso e periodicamente.
+        </p>
+        <form onSubmit={lidarComTrocarSenha} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <Input label="Senha atual" type="password" value={senhaAtual} onChange={e => definirSenhaAtual(e.target.value)} />
+          <Input label="Nova senha" type="password" value={novaSenha} onChange={e => definirNovaSenha(e.target.value)} placeholder="Mín. 6 caracteres" />
+          <Input label="Confirmar nova senha" type="password" value={confirmarSenha} onChange={e => definirConfirmarSenha(e.target.value)} />
+          {mensagemSenha && (
+            <div style={{
+              display: "flex", gap: 8, padding: "9px 12px", borderRadius: "var(--radius)", fontSize: 13,
+              background: mensagemSenha.tipo === "ok" ? "rgba(22,163,74,0.08)" : "rgba(212,24,61,0.07)",
+              border: mensagemSenha.tipo === "ok" ? "1px solid rgba(22,163,74,0.25)" : "1px solid rgba(212,24,61,0.2)",
+              color: mensagemSenha.tipo === "ok" ? "#16a34a" : "#d4183d",
+            }}>
+              {mensagemSenha.tipo === "ok" ? <CheckCircle size={15} style={{ flexShrink: 0, marginTop: 1 }} /> : <AlertCircle size={15} style={{ flexShrink: 0, marginTop: 1 }} />}
+              {mensagemSenha.texto}
+            </div>
+          )}
+          <div>
+            <Btn type="submit" disabled={salvandoSenha || !senhaAtual || !novaSenha} onClick={lidarComTrocarSenha}>
+              {salvandoSenha ? "A guardar..." : "Alterar senha"}
+            </Btn>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ─── Avaliações (moderação: aprovar/rejeitar antes de ficarem públicas) ────
+
+function EstrelasExibicao({ nota }) {
+  return (
+    <div style={{ display: "flex", gap: 1 }}>
+      {[1, 2, 3, 4, 5].map((v) => (
+        <Star key={v} size={13} fill={v <= nota ? "#facc15" : "none"} color={v <= nota ? "#facc15" : "var(--border)"} />
+      ))}
+    </div>
+  );
+}
+
+function AvaliacoesScreen({ escuro }) {
+  const [estado, definirEstado] = useState("carregando");
+  const [avaliacoes, setAvaliacoes] = useState([]);
+  const [filtroStatus, definirFiltroStatus] = useState("pendente");
+  const [processandoId, definirProcessandoId] = useState(null);
+
+  async function carregar() {
+    definirEstado("carregando");
+    try {
+      const resposta = await getAvaliacoes(filtroStatus === "todas" ? "" : filtroStatus);
+      setAvaliacoes(resposta.avaliacoes);
+      definirEstado("carregado");
+    } catch {
+      definirEstado("erro");
+    }
+  }
+
+  useEffect(() => { carregar(); }, [filtroStatus]);
+
+  async function lidarComAprovar(id) {
+    definirProcessandoId(id);
+    try {
+      await aprovarAvaliacao(id);
+      await carregar();
+    } catch (falha) {
+      alert(falha.message);
+    } finally {
+      definirProcessandoId(null);
+    }
+  }
+
+  async function lidarComRejeitar(id) {
+    if (!window.confirm("Rejeitar esta avaliação? Ela nunca ficará visível no site.")) return;
+    definirProcessandoId(id);
+    try {
+      await rejeitarAvaliacao(id);
+      await carregar();
+    } catch (falha) {
+      alert(falha.message);
+    } finally {
+      definirProcessandoId(null);
+    }
+  }
+
+  const abas = [
+    { key: "pendente", label: "Pendentes" },
+    { key: "aprovado", label: "Aprovadas" },
+    { key: "rejeitado", label: "Rejeitadas" },
+    { key: "todas", label: "Todas" },
+  ];
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <p style={{ margin: 0, fontSize: 13, color: "var(--muted-foreground)" }}>
+        Avaliações enviadas pelos clientes após o pagamento. Só ficam visíveis no site depois de aprovadas aqui.
+      </p>
+
+      <div style={{ display: "flex", gap: 8 }}>
+        {abas.map((a) => (
+          <Btn key={a.key} variant={filtroStatus === a.key ? "primary" : "secondary"} size="sm" onClick={() => definirFiltroStatus(a.key)}>
+            {a.label}
+          </Btn>
+        ))}
+      </div>
+
+      {estado === "carregando" ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          {[1, 2, 3].map((i) => <Skeleton key={i} height={90} />)}
+        </div>
+      ) : estado === "erro" ? (
+        <ErrorState onRetry={carregar} />
+      ) : avaliacoes.length === 0 ? (
+        <EmptyState message="Nenhuma avaliação encontrada." />
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          {avaliacoes.map((av) => (
+            <div key={av.id} style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: 16 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8, gap: 12 }}>
+                <div>
+                  <div style={{ fontWeight: 600, fontSize: 14 }}>{av.nome_cliente || "Cliente ServCasa"}</div>
+                  <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+                    Sobre {av.nome_profissional} · {av.nome_categoria} · {new Date(av.data_servico).toLocaleDateString("pt-PT", { timeZone: "UTC" })}
+                  </div>
+                </div>
+                <EstrelasExibicao nota={av.nota} />
+              </div>
+              {av.comentario && (
+                <p style={{ margin: "8px 0 12px", fontSize: 14, color: "var(--foreground)", lineHeight: 1.5 }}>{av.comentario}</p>
+              )}
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <span style={{
+                  fontSize: 11, fontWeight: 600, padding: "2px 9px", borderRadius: 99,
+                  background: av.status === "aprovado" ? "rgba(22,163,74,0.12)" : av.status === "rejeitado" ? "rgba(212,24,61,0.1)" : "rgba(245,158,11,0.14)",
+                  color: av.status === "aprovado" ? "#16a34a" : av.status === "rejeitado" ? "#d4183d" : "#b45309",
+                }}>
+                  {av.status === "aprovado" ? "Aprovada" : av.status === "rejeitado" ? "Rejeitada" : "Pendente"}
+                </span>
+                {av.status === "pendente" && (
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <Btn variant="ghost" size="sm" disabled={processandoId === av.id} onClick={() => lidarComRejeitar(av.id)} style={{ color: "#d4183d" }}>
+                      Rejeitar
+                    </Btn>
+                    <Btn variant="primary" size="sm" disabled={processandoId === av.id} onClick={() => lidarComAprovar(av.id)}>
+                      Aprovar e publicar
+                    </Btn>
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Financeiro (visão geral de lucros, pagamentos, e repasses) ───────────────
+
+function CartaoResumoFinanceiro({ titulo, valor, cor, Icone, sublabel }) {
+  return (
+    <div style={{
+      background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--radius)",
+      padding: 16, display: "flex", flexDirection: "column", gap: 8,
+    }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <span style={{ fontSize: 12, fontWeight: 600, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: 0.3 }}>{titulo}</span>
+        <div style={{ width: 30, height: 30, borderRadius: 8, background: `${cor}1a`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <Icone size={15} color={cor} />
+        </div>
+      </div>
+      <div style={{ fontSize: 22, fontWeight: 700, color: "var(--foreground)" }}>MT {valor.toLocaleString("pt-MZ", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+      {sublabel && <span style={{ fontSize: 11, color: "var(--muted-foreground)" }}>{sublabel}</span>}
+    </div>
+  );
+}
+
+function FinanceiroScreen({ escuro }) {
+  const [estado, definirEstado] = useState("carregando");
+  const [dados, setDados] = useState(null);
+  const [profissionaisAtivos, setProfissionaisAtivos] = useState([]);
+  const [salvandoId, setSalvandoId] = useState(null);
+  const [abaVisao, setAbaVisao] = useState("trabalhos"); // "trabalhos" | "profissionais"
+
+  const [filtros, setFiltros] = useState({
+    data_inicio: "", data_fim: "", profissional_id: "",
+    pagamento_cliente: "", pagamento_profissional: "",
+  });
+
+  async function carregar() {
+    definirEstado("carregando");
+    try {
+      const [financeiro, profs] = await Promise.all([
+        getFinanceiro(filtros),
+        getProfissionais().catch(() => ({ profissionais: [] })),
+      ]);
+      setDados(financeiro);
+      setProfissionaisAtivos(profs.profissionais || []);
+      definirEstado("carregado");
+    } catch {
+      definirEstado("erro");
+    }
+  }
+
+  useEffect(() => { carregar(); }, [filtros.data_inicio, filtros.data_fim, filtros.profissional_id, filtros.pagamento_cliente, filtros.pagamento_profissional]);
+
+  function atualizarFiltro(campo, valor) {
+    setFiltros((v) => ({ ...v, [campo]: valor }));
+  }
+
+  function limparFiltros() {
+    setFiltros({ data_inicio: "", data_fim: "", profissional_id: "", pagamento_cliente: "", pagamento_profissional: "" });
+  }
+
+  function lidarComExportarExcel() {
+    if (!dados) return;
+    const { resumo, porProfissional, trabalhos } = dados;
+
+    const livro = XLSX.utils.book_new();
+    const hoje = new Date().toISOString().slice(0, 10);
+
+    // ── Folha 1: Resumo ──────────────────────────────────────────────────
+    const linhasResumo = [
+      ["Relatório Financeiro — ServCasa"],
+      [`Gerado em: ${new Date().toLocaleString("pt-PT")}`],
+      (filtros.data_inicio || filtros.data_fim) ? [`Período: ${filtros.data_inicio || "início"} a ${filtros.data_fim || "hoje"}`] : [],
+      [],
+      ["Indicador", "Valor (MT)"],
+      ["Total faturado", resumo.totalFaturado],
+      ["Taxa da plataforma (total)", resumo.totalTaxaApp],
+      ["Valor total dos profissionais", resumo.totalValorProfissionais],
+      ["Lucro realizado (taxa já recebida)", resumo.lucroRealizado],
+      [],
+      ["Recebido dos clientes", resumo.totalRecebidoClientes],
+      ["A receber dos clientes", resumo.totalAReceberClientes],
+      [],
+      ["Já pago aos profissionais", resumo.totalPagoProfissionais],
+      ["A pagar aos profissionais", resumo.totalAPagarProfissionais],
+      [],
+      ["Total de trabalhos concluídos", resumo.totalTrabalhos],
+    ];
+
+    const folhaResumo = XLSX.utils.aoa_to_sheet(linhasResumo);
+    folhaResumo["!cols"] = [{ wch: 32 }, { wch: 18 }];
+    XLSX.utils.book_append_sheet(livro, folhaResumo, "Resumo");
+
+    // ── Folha 2: Por Profissional ────────────────────────────────────────
+    const linhasProfissionais = porProfissional.map((p) => ({
+      "Profissional": p.nome_profissional,
+      "Nº de trabalhos": p.totalTrabalhos,
+      "Total faturado (MT)": Number(p.totalFaturado.toFixed(2)),
+      "Parte do profissional (MT)": Number(p.totalValorProfissional.toFixed(2)),
+      "Já pago (MT)": Number(p.totalPago.toFixed(2)),
+      "Pendente (MT)": Number(p.totalPendente.toFixed(2)),
+    }));
+    const folhaProfissionais = XLSX.utils.json_to_sheet(linhasProfissionais);
+    folhaProfissionais["!cols"] = [{ wch: 26 }, { wch: 14 }, { wch: 18 }, { wch: 22 }, { wch: 14 }, { wch: 14 }];
+    XLSX.utils.book_append_sheet(livro, folhaProfissionais, "Por Profissional");
+
+    // ── Folha 3: Trabalhos (detalhe) ─────────────────────────────────────
+    const linhasTrabalhos = trabalhos.map((t) => ({
+      "Cliente": t.nome_cliente,
+      "Profissional": t.nome_profissional || "—",
+      "Categoria": t.nome_categoria || "—",
+      "Data": t.data ? new Date(t.data).toLocaleDateString("pt-PT", { timeZone: "UTC" }) : "",
+      "Hora": (t.hora || "").toString().slice(0, 5),
+      "Duração (min)": t.duracao_minutos ?? "",
+      "Valor total (MT)": t.valor_total != null ? Number(Number(t.valor_total).toFixed(2)) : "",
+      "Taxa da app (MT)": t.taxa_app != null ? Number(Number(t.taxa_app).toFixed(2)) : "",
+      "Parte do profissional (MT)": t.valor_profissional != null ? Number(Number(t.valor_profissional).toFixed(2)) : "",
+      "Cliente pagou?": t.status_pagamento === "pago" ? "Sim" : t.status_pagamento === "processando" ? "A confirmar" : "Não",
+      "Método de pagamento": t.metodo_pagamento === "carteira_movel" ? "Carteira móvel" : t.metodo_pagamento === "conta_bancaria" ? "Conta bancária" : "—",
+      "Profissional recebeu?": t.pago_ao_profissional ? "Sim" : "Não",
+    }));
+    const folhaTrabalhos = XLSX.utils.json_to_sheet(linhasTrabalhos);
+    folhaTrabalhos["!cols"] = [
+      { wch: 22 }, { wch: 22 }, { wch: 18 }, { wch: 12 }, { wch: 8 }, { wch: 13 },
+      { wch: 15 }, { wch: 14 }, { wch: 22 }, { wch: 13 }, { wch: 18 }, { wch: 18 },
+    ];
+    XLSX.utils.book_append_sheet(livro, folhaTrabalhos, "Trabalhos");
+
+    XLSX.writeFile(livro, `servcasa-financeiro-${hoje}.xlsx`);
+  }
+
+  const filtrosAtivos = Object.values(filtros).some(Boolean);
+
+  async function lidarComMarcarPagoProfissional(trabalho) {
+    if (!window.confirm(`Confirmar o repasse de MT ${Number(trabalho.valor_profissional || 0).toLocaleString("pt-MZ", { minimumFractionDigits: 2 })} para ${trabalho.nome_profissional}?`)) return;
+    setSalvandoId(trabalho.id);
+    try {
+      await marcarPagoProfissional(trabalho.id);
+      await carregar();
+    } catch (falha) {
+      alert(falha.message);
+    } finally {
+      setSalvandoId(null);
+    }
+  }
+
+  async function lidarComMarcarPagoCliente(trabalho) {
+    if (!window.confirm(`Confirmar que ${trabalho.nome_cliente} pagou MT ${Number(trabalho.valor_total || 0).toLocaleString("pt-MZ", { minimumFractionDigits: 2 })}?`)) return;
+    setSalvandoId(trabalho.id);
+    try {
+      await marcarPago(trabalho.id);
+      await carregar();
+    } catch (falha) {
+      alert(falha.message);
+    } finally {
+      setSalvandoId(null);
+    }
+  }
+
+  if (estado === "carregando" && !dados) {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
+          {[1, 2, 3, 4, 5].map((i) => <Skeleton key={i} height={90} />)}
+        </div>
+        <Skeleton height={300} />
+      </div>
+    );
+  }
+
+  if (estado === "erro") {
+    return <ErrorState onRetry={carregar} />;
+  }
+
+  const { resumo, porProfissional, trabalhos } = dados;
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      {/* Resumo geral */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
+        <CartaoResumoFinanceiro titulo="Total faturado" valor={resumo.totalFaturado} cor="#2563eb" Icone={TrendingUp} sublabel={`${resumo.totalTrabalhos} trabalho(s) concluído(s)`} />
+        <CartaoResumoFinanceiro titulo="Lucro realizado" valor={resumo.lucroRealizado} cor="#16a34a" Icone={Wallet} sublabel="Taxa da app já recebida" />
+        <CartaoResumoFinanceiro titulo="A receber (clientes)" valor={resumo.totalAReceberClientes} cor="#f59e0b" Icone={TrendingDown} sublabel="Pagamentos pendentes" />
+        <CartaoResumoFinanceiro titulo="A pagar (profissionais)" valor={resumo.totalAPagarProfissionais} cor="#d4183d" Icone={Banknote} sublabel="Repasses pendentes" />
+        <CartaoResumoFinanceiro titulo="Já pago (profissionais)" valor={resumo.totalPagoProfissionais} cor="#8b5cf6" Icone={CheckCircle} sublabel="Repasses concluídos" />
+      </div>
+
+      {/* Filtros */}
+      <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: 14 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+          <Filter size={14} color="var(--muted-foreground)" />
+          <span style={{ fontSize: 13, fontWeight: 600 }}>Filtros</span>
+          {filtrosAtivos && (
+            <button onClick={limparFiltros} style={{ marginLeft: "auto", fontSize: 12, color: "var(--destructive)", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit" }}>
+              Limpar
+            </button>
+          )}
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 10 }}>
+          <div>
+            <label style={{ fontSize: 11, color: "var(--muted-foreground)", display: "block", marginBottom: 4 }}>De</label>
+            <input type="date" value={filtros.data_inicio} onChange={(e) => atualizarFiltro("data_inicio", e.target.value)}
+              style={{ width: "100%", boxSizing: "border-box", padding: "7px 10px", borderRadius: "var(--radius)", border: "1.5px solid var(--border)", background: "var(--input-background)", color: "var(--foreground)", fontSize: 13, fontFamily: "inherit" }} />
+          </div>
+          <div>
+            <label style={{ fontSize: 11, color: "var(--muted-foreground)", display: "block", marginBottom: 4 }}>Até</label>
+            <input type="date" value={filtros.data_fim} onChange={(e) => atualizarFiltro("data_fim", e.target.value)}
+              style={{ width: "100%", boxSizing: "border-box", padding: "7px 10px", borderRadius: "var(--radius)", border: "1.5px solid var(--border)", background: "var(--input-background)", color: "var(--foreground)", fontSize: 13, fontFamily: "inherit" }} />
+          </div>
+          <div>
+            <label style={{ fontSize: 11, color: "var(--muted-foreground)", display: "block", marginBottom: 4 }}>Profissional</label>
+            <select value={filtros.profissional_id} onChange={(e) => atualizarFiltro("profissional_id", e.target.value)}
+              style={{ width: "100%", boxSizing: "border-box", padding: "7px 10px", borderRadius: "var(--radius)", border: "1.5px solid var(--border)", background: "var(--input-background)", color: "var(--foreground)", fontSize: 13, fontFamily: "inherit" }}>
+              <option value="">Todos</option>
+              {profissionaisAtivos.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={{ fontSize: 11, color: "var(--muted-foreground)", display: "block", marginBottom: 4 }}>Cliente pagou?</label>
+            <select value={filtros.pagamento_cliente} onChange={(e) => atualizarFiltro("pagamento_cliente", e.target.value)}
+              style={{ width: "100%", boxSizing: "border-box", padding: "7px 10px", borderRadius: "var(--radius)", border: "1.5px solid var(--border)", background: "var(--input-background)", color: "var(--foreground)", fontSize: 13, fontFamily: "inherit" }}>
+              <option value="">Todos</option>
+              <option value="pago">Pago</option>
+              <option value="processando">A confirmar</option>
+              <option value="pendente">Pendente</option>
+            </select>
+          </div>
+          <div>
+            <label style={{ fontSize: 11, color: "var(--muted-foreground)", display: "block", marginBottom: 4 }}>Profissional recebeu?</label>
+            <select value={filtros.pagamento_profissional} onChange={(e) => atualizarFiltro("pagamento_profissional", e.target.value)}
+              style={{ width: "100%", boxSizing: "border-box", padding: "7px 10px", borderRadius: "var(--radius)", border: "1.5px solid var(--border)", background: "var(--input-background)", color: "var(--foreground)", fontSize: 13, fontFamily: "inherit" }}>
+              <option value="">Todos</option>
+              <option value="pago">Pago</option>
+              <option value="pendente">Pendente</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      {/* Alternância de visão + exportar */}
+      <div style={{ display: "flex", gap: 8, justifyContent: "space-between", flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: 8 }}>
+          <Btn variant={abaVisao === "trabalhos" ? "primary" : "secondary"} size="sm" onClick={() => setAbaVisao("trabalhos")}>Por trabalho</Btn>
+          <Btn variant={abaVisao === "profissionais" ? "primary" : "secondary"} size="sm" onClick={() => setAbaVisao("profissionais")}>Por profissional</Btn>
+        </div>
+        <Btn variant="secondary" size="sm" onClick={lidarComExportarExcel} disabled={!dados || dados.trabalhos.length === 0}>
+          <Download size={14} /> Exportar Excel
+        </Btn>
+      </div>
+
+      {abaVisao === "profissionais" ? (
+        <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--radius)", overflow: "hidden" }}>
+          {porProfissional.length === 0 ? <EmptyState message="Nenhum trabalho concluído no período." /> : (
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                <thead>
+                  <tr style={{ borderBottom: "1px solid var(--border)" }}>
+                    {["Profissional", "Trabalhos", "Faturado", "Parte dele", "Já pago", "Pendente"].map((h) => (
+                      <th key={h} style={{ padding: "10px 16px", textAlign: "left", fontSize: 12, fontWeight: 600, color: "var(--muted-foreground)" }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {porProfissional.map((p) => (
+                    <tr key={p.profissional_id || "sem"} style={{ borderBottom: "1px solid var(--border)" }}>
+                      <td style={{ padding: "12px 16px", fontWeight: 600 }}>{p.nome_profissional}</td>
+                      <td style={{ padding: "12px 16px" }}>{p.totalTrabalhos}</td>
+                      <td style={{ padding: "12px 16px" }}>MT {p.totalFaturado.toLocaleString("pt-MZ", { minimumFractionDigits: 2 })}</td>
+                      <td style={{ padding: "12px 16px" }}>MT {p.totalValorProfissional.toLocaleString("pt-MZ", { minimumFractionDigits: 2 })}</td>
+                      <td style={{ padding: "12px 16px", color: "#16a34a", fontWeight: 600 }}>MT {p.totalPago.toLocaleString("pt-MZ", { minimumFractionDigits: 2 })}</td>
+                      <td style={{ padding: "12px 16px", color: p.totalPendente > 0 ? "#d4183d" : "var(--muted-foreground)", fontWeight: 600 }}>MT {p.totalPendente.toLocaleString("pt-MZ", { minimumFractionDigits: 2 })}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--radius)", overflow: "hidden" }}>
+          {trabalhos.length === 0 ? <EmptyState message="Nenhum trabalho concluído com esses filtros." /> : (
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                <thead>
+                  <tr style={{ borderBottom: "1px solid var(--border)" }}>
+                    {["Cliente", "Profissional", "Data", "Faturado", "Taxa app", "Parte prof.", "Cliente pagou", "Profissional recebeu"].map((h) => (
+                      <th key={h} style={{ padding: "10px 16px", textAlign: "left", fontSize: 12, fontWeight: 600, color: "var(--muted-foreground)", whiteSpace: "nowrap" }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {trabalhos.map((t) => (
+                    <tr key={t.id} style={{ borderBottom: "1px solid var(--border)" }}>
+                      <td style={{ padding: "12px 16px" }}>
+                        <div style={{ fontWeight: 600 }}>{t.nome_cliente}</div>
+                        <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>{t.nome_categoria}</div>
+                      </td>
+                      <td style={{ padding: "12px 16px" }}>{t.nome_profissional || "—"}</td>
+                      <td style={{ padding: "12px 16px", whiteSpace: "nowrap" }}>{formatarDataHora(t)}</td>
+                      <td style={{ padding: "12px 16px", fontWeight: 600, whiteSpace: "nowrap" }}>MT {Number(t.valor_total || 0).toLocaleString("pt-MZ", { minimumFractionDigits: 2 })}</td>
+                      <td style={{ padding: "12px 16px", color: "#16a34a", whiteSpace: "nowrap" }}>MT {Number(t.taxa_app || 0).toLocaleString("pt-MZ", { minimumFractionDigits: 2 })}</td>
+                      <td style={{ padding: "12px 16px", whiteSpace: "nowrap" }}>MT {Number(t.valor_profissional || 0).toLocaleString("pt-MZ", { minimumFractionDigits: 2 })}</td>
+                      <td style={{ padding: "12px 16px", whiteSpace: "nowrap" }}>
+                        {t.status_pagamento === "pago" ? (
+                          <span style={{ fontSize: 11, fontWeight: 600, padding: "2px 8px", borderRadius: 99, background: "rgba(22,163,74,0.12)", color: "#16a34a" }}>Pago</span>
+                        ) : (
+                          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                            <span style={{ fontSize: 11, fontWeight: 600, padding: "2px 8px", borderRadius: 99, background: t.status_pagamento === "processando" ? "rgba(37,99,235,0.14)" : "rgba(245,158,11,0.14)", color: t.status_pagamento === "processando" ? "#2563eb" : "#b45309" }}>
+                              {t.status_pagamento === "processando" ? "A confirmar" : "Pendente"}
+                            </span>
+                            <Btn variant="ghost" size="sm" disabled={salvandoId === t.id} onClick={() => lidarComMarcarPagoCliente(t)}>Marcar pago</Btn>
+                          </div>
+                        )}
+                      </td>
+                      <td style={{ padding: "12px 16px", whiteSpace: "nowrap" }}>
+                        {t.pago_ao_profissional ? (
+                          <span style={{ fontSize: 11, fontWeight: 600, padding: "2px 8px", borderRadius: 99, background: "rgba(22,163,74,0.12)", color: "#16a34a" }}>Pago</span>
+                        ) : (
+                          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                            <span style={{ fontSize: 11, fontWeight: 600, padding: "2px 8px", borderRadius: 99, background: "rgba(245,158,11,0.14)", color: "#b45309" }}>Pendente</span>
+                            <Btn variant="ghost" size="sm" disabled={salvandoId === t.id} onClick={() => lidarComMarcarPagoProfissional(t)}>Marcar pago</Btn>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Main App ─────────────────────────────────────────────────────────────────
 
 export default function App() {
@@ -2421,10 +3305,13 @@ export default function App() {
     { key: "dashboard",     label: "Dashboard",    icon: LayoutDashboard },
     { key: "agendamentos",  label: "Agendamentos", icon: Calendar        },
     { key: "profissionais", label: "Profissionais",icon: Users           },
+    { key: "financeiro",    label: "Financeiro",   icon: Wallet          },
+    { key: "avaliacoes",    label: "Avaliações",   icon: Star            },
     ...(isAdmin ? [
       { key: "gestores",   label: "Gestores",   icon: UserCog },
       { key: "categorias", label: "Categorias", icon: Tag     },
     ] : []),
+    { key: "configuracoes", label: "Configurações", icon: Settings },
   ];
 
   return (
@@ -2559,6 +3446,9 @@ export default function App() {
             {tela === "profissionais" && <ProfissionaisScreen escuro={escuro} utilizador={utilizador} />}
             {tela === "gestores"   && isAdmin && <GestoresScreen escuro={escuro} />}
             {tela === "categorias" && isAdmin && <CategoriasScreen escuro={escuro} />}
+            {tela === "financeiro" && <FinanceiroScreen escuro={escuro} />}
+            {tela === "avaliacoes" && <AvaliacoesScreen escuro={escuro} />}
+            {tela === "configuracoes" && <ConfiguracoesScreen isAdmin={isAdmin} />}
           </main>
         </div>
       </div>

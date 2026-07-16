@@ -1,5 +1,6 @@
-import { Mail, Phone, MapPin, Clock, Send } from "lucide-react";
+import { Mail, Phone, MapPin, Clock, Send, MessageCircle, AlertCircle } from "lucide-react";
 import { useState } from "react";
+import { enviarContacto } from "../api";
 
 export function Contacto() {
   const [dadosFormulario, definirDadosFormulario] = useState({
@@ -11,20 +12,32 @@ export function Contacto() {
   });
 
   const [foiSubmetido, definirFoiSubmetido] = useState(false);
+  const [enviando, definirEnviando] = useState(false);
+  const [erroEnvio, definirErroEnvio] = useState("");
 
   const aoSubmeter = async (evento) => {
-  evento.preventDefault();
-  await enviarContacto({
-    nome: dadosFormulario.nome,
-    email: dadosFormulario.email,
-    mensagem: `[${dadosFormulario.assunto}] ${dadosFormulario.mensagem}`,
-  });
-  definirFoiSubmetido(true);
-  setTimeout(() => {
-    definirFoiSubmetido(false);
-    definirDadosFormulario({ nome: "", email: "", telefone: "", assunto: "", mensagem: "" });
-  }, 3000);
-};
+    evento.preventDefault();
+    definirErroEnvio("");
+    definirEnviando(true);
+    try {
+      await enviarContacto({
+        nome: dadosFormulario.nome,
+        email: dadosFormulario.email,
+        telefone: dadosFormulario.telefone,
+        assunto: dadosFormulario.assunto,
+        mensagem: dadosFormulario.mensagem,
+      });
+      definirFoiSubmetido(true);
+      setTimeout(() => {
+        definirFoiSubmetido(false);
+        definirDadosFormulario({ nome: "", email: "", telefone: "", assunto: "", mensagem: "" });
+      }, 3000);
+    } catch (falha) {
+      definirErroEnvio(falha.message || "Não foi possível enviar a mensagem. Tente novamente.");
+    } finally {
+      definirEnviando(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -54,6 +67,23 @@ export function Contacto() {
                 </p>
               </div>
 
+              <a
+                href="https://wa.link/ye9hma"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block bg-white rounded-xl shadow-md p-6 border border-gray-100 hover:border-green-300 transition-colors"
+              >
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <MessageCircle className="w-6 h-6 text-green-600" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-gray-900 mb-1">WhatsApp</h3>
+                    <p className="text-gray-600">Fale connosco agora mesmo</p>
+                  </div>
+                </div>
+              </a>
+
               <div className="bg-white rounded-xl shadow-md p-6 border border-gray-100">
                 <div className="flex items-start gap-4">
                   <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -61,8 +91,8 @@ export function Contacto() {
                   </div>
                   <div>
                     <h3 className="font-bold text-gray-900 mb-1">Telefone</h3>
-                    <p className="text-gray-600">+258 84 000 0000</p>
-                    <p className="text-gray-600">+258 82 000 0000</p>
+                    <p className="text-gray-600">+258 83 372 3147</p>
+                    <p className="text-gray-600">+258 84 386 9779</p>
                   </div>
                 </div>
               </div>
@@ -74,8 +104,7 @@ export function Contacto() {
                   </div>
                   <div>
                     <h3 className="font-bold text-gray-900 mb-1">E-mail</h3>
-                    <p className="text-gray-600">geral@servcasa.co.mz</p>
-                    <p className="text-gray-600">suporte@servcasa.co.mz</p>
+                    <p className="text-gray-600">info@digilab.co.mz</p>
                   </div>
                 </div>
               </div>
@@ -239,12 +268,20 @@ export function Contacto() {
                       />
                     </div>
 
+                    {erroEnvio && (
+                      <div className="flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 text-sm">
+                        <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                        {erroEnvio}
+                      </div>
+                    )}
+
                     <button
                       type="submit"
-                      className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-4 rounded-xl font-bold text-lg hover:from-blue-700 hover:to-indigo-700 transition-all shadow-lg flex items-center justify-center gap-2"
+                      disabled={enviando}
+                      className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-4 rounded-xl font-bold text-lg hover:from-blue-700 hover:to-indigo-700 transition-all shadow-lg flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
                     >
                       <Send className="w-5 h-5" />
-                      Enviar Mensagem
+                      {enviando ? "A enviar..." : "Enviar Mensagem"}
                     </button>
                   </form>
                 )}

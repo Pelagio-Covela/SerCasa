@@ -172,7 +172,7 @@ export const categorias = [
   },
   {
     id: "encanador",
-    nome: "Canalisador",
+    nome: "Canalizador",
     icone: "droplet",
     descricao: "Reparos e instalações hidráulicas",
     cor: "bg-cyan-500",

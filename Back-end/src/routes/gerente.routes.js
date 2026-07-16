@@ -2,6 +2,7 @@ const express = require("express");
 const bcrypt = require("bcryptjs");
 const pool = require("../config/baseDados");
 const { verificarToken, verificarPapel } = require("../middlewares/auth.middleware");
+const { normalizarDia } = require("../utils/disponibilidade");
 
 const router = express.Router();
 
@@ -83,6 +84,7 @@ router.post("/agendamentos", async (req, res) => {
     const {
       nome_cliente,
       telefone,
+      email_cliente,
       endereco,
       categoria_id,
       data,
@@ -92,9 +94,9 @@ router.post("/agendamentos", async (req, res) => {
       profissional_id,
     } = req.body;
 
-    if (!nome_cliente || !telefone || !endereco || !categoria_id || !data || !hora) {
+    if (!nome_cliente || !telefone || !email_cliente || !endereco || !categoria_id || !data || !hora) {
       return res.status(400).json({
-        mensagem: "Preencha todos os campos obrigatórios",
+        mensagem: "Preencha todos os campos obrigatórios (incluindo o e-mail do cliente)",
       });
     }
 
@@ -102,11 +104,12 @@ router.post("/agendamentos", async (req, res) => {
 
     const [resultado] = await pool.query(
       `INSERT INTO agendamentos
-        (nome_cliente, telefone, endereco, categoria_id, data, hora, latitude, longitude, profissional_id, status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        (nome_cliente, telefone, email_cliente, endereco, categoria_id, data, hora, latitude, longitude, profissional_id, status)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         nome_cliente,
         telefone,
+        email_cliente,
         endereco,
         categoria_id,
         data,
@@ -175,7 +178,7 @@ router.put("/agendamentos/:id/cancelar", async (req, res) => {
   }
 });
 
-// MARCAR PAGAMENTO DE UM TRABALHO CONCLUÍDO COMO PAGO
+// MARCAR PAGAMENTO DE UM TRABALHO CONCLUÍDO COMO PAGO (o CLIENTE pagou a ServCasa)
 router.put("/agendamentos/:id/marcar-pago", async (req, res) => {
   try {
     const { id } = req.params;
@@ -193,6 +196,192 @@ router.put("/agendamentos/:id/marcar-pago", async (req, res) => {
   } catch (erro) {
     console.error(erro);
     res.status(500).json({ mensagem: "Erro ao marcar pagamento" });
+  }
+});
+
+// MARCAR QUE A SERVCASA JÁ REPASSOU A PARTE DO PROFISSIONAL
+router.put("/agendamentos/:id/marcar-pago-profissional", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const [resultado] = await pool.query(
+      `UPDATE agendamentos
+       SET pago_ao_profissional = TRUE, pago_ao_profissional_em = NOW()
+       WHERE id = ? AND status = 'concluido'`,
+      [id]
+    );
+
+    if (resultado.affectedRows === 0) {
+      return res.status(404).json({ mensagem: "Agendamento concluído não encontrado" });
+    }
+
+    res.json({ mensagem: "Repasse ao profissional marcado como pago" });
+  } catch (erro) {
+    console.error(erro);
+    res.status(500).json({ mensagem: "Erro ao marcar repasse" });
+  }
+});
+
+// ─── Avaliações (moderação: aprovar/rejeitar antes de ficarem públicas) ────
+
+// LISTAR AVALIAÇÕES (com filtro opcional por status)
+router.get("/avaliacoes", async (req, res) => {
+  try {
+    const { status } = req.query;
+
+    let query = `
+      SELECT av.*, p.nome AS nome_profissional, a.data AS data_servico, c.nome AS nome_categoria
+      FROM avaliacoes av
+      JOIN profissionais p ON p.id = av.profissional_id
+      JOIN agendamentos a ON a.id = av.agendamento_id
+      LEFT JOIN categorias c ON c.id = a.categoria_id
+    `;
+    const valores = [];
+    if (status) {
+      query += " WHERE av.status = ?";
+      valores.push(status);
+    }
+    query += " ORDER BY av.criado_em DESC";
+
+    const [linhas] = await pool.query(query, valores);
+    res.json({ total: linhas.length, avaliacoes: linhas });
+  } catch (erro) {
+    console.error(erro);
+    res.status(500).json({ mensagem: "Erro ao obter avaliações" });
+  }
+});
+
+// recalcula a média/contagem de avaliações aprovadas de um profissional
+async function recalcularAvaliacaoProfissional(profissionalId) {
+  const [[resultado]] = await pool.query(
+    "SELECT AVG(nota) AS media, COUNT(*) AS total FROM avaliacoes WHERE profissional_id = ? AND status = 'aprovado'",
+    [profissionalId]
+  );
+  await pool.query(
+    "UPDATE profissionais SET avaliacao = ?, total_avaliacoes = ? WHERE id = ?",
+    [resultado.media ? Number(resultado.media).toFixed(1) : 0, resultado.total || 0, profissionalId]
+  );
+}
+
+// APROVAR AVALIAÇÃO (fica visível no site)
+router.put("/avaliacoes/:id/aprovar", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const [[avaliacao]] = await pool.query("SELECT profissional_id FROM avaliacoes WHERE id = ?", [id]);
+    if (!avaliacao) return res.status(404).json({ mensagem: "Avaliação não encontrada" });
+
+    await pool.query(
+      "UPDATE avaliacoes SET status = 'aprovado', moderado_em = NOW() WHERE id = ?",
+      [id]
+    );
+    await recalcularAvaliacaoProfissional(avaliacao.profissional_id);
+
+    res.json({ mensagem: "Avaliação aprovada e publicada" });
+  } catch (erro) {
+    console.error(erro);
+    res.status(500).json({ mensagem: "Erro ao aprovar avaliação" });
+  }
+});
+
+// REJEITAR AVALIAÇÃO (nunca fica visível)
+router.put("/avaliacoes/:id/rejeitar", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const [resultado] = await pool.query(
+      "UPDATE avaliacoes SET status = 'rejeitado', moderado_em = NOW() WHERE id = ?",
+      [id]
+    );
+    if (resultado.affectedRows === 0) return res.status(404).json({ mensagem: "Avaliação não encontrada" });
+
+    res.json({ mensagem: "Avaliação rejeitada" });
+  } catch (erro) {
+    console.error(erro);
+    res.status(500).json({ mensagem: "Erro ao rejeitar avaliação" });
+  }
+});
+
+// VISÃO GERAL FINANCEIRA: lucro da plataforma, quem já pagou/recebeu, e
+// o detalhe de cada trabalho concluído — com filtros opcionais.
+router.get("/financeiro", async (req, res) => {
+  try {
+    const { data_inicio, data_fim, profissional_id, pagamento_cliente, pagamento_profissional } = req.query;
+
+    let query = `
+      SELECT a.id, a.nome_cliente, a.telefone, a.email_cliente, a.data, a.hora,
+             a.endereco, a.duracao_minutos, a.checkin_hora, a.checkout_hora,
+             a.valor_total, a.valor_profissional, a.taxa_app,
+             a.status_pagamento, a.metodo_pagamento, a.pagamento_submetido_em,
+             a.pago_ao_profissional, a.pago_ao_profissional_em,
+             c.nome AS nome_categoria, p.id AS profissional_id, p.nome AS nome_profissional
+      FROM agendamentos a
+      LEFT JOIN categorias c ON c.id = a.categoria_id
+      LEFT JOIN profissionais p ON p.id = a.profissional_id
+      WHERE a.status = 'concluido'
+    `;
+    const valores = [];
+
+    if (data_inicio) { query += " AND a.data >= ?"; valores.push(data_inicio); }
+    if (data_fim) { query += " AND a.data <= ?"; valores.push(data_fim); }
+    if (profissional_id) { query += " AND a.profissional_id = ?"; valores.push(profissional_id); }
+    if (pagamento_cliente) { query += " AND a.status_pagamento = ?"; valores.push(pagamento_cliente); }
+    if (pagamento_profissional === "pago") { query += " AND a.pago_ao_profissional = TRUE"; }
+    if (pagamento_profissional === "pendente") { query += " AND a.pago_ao_profissional = FALSE"; }
+
+    query += " ORDER BY a.checkout_hora DESC";
+
+    const [trabalhos] = await pool.query(query, valores);
+
+    // resumo geral
+    const resumo = trabalhos.reduce((acc, t) => {
+      acc.totalFaturado += Number(t.valor_total || 0);
+      acc.totalTaxaApp += Number(t.taxa_app || 0);
+      acc.totalValorProfissionais += Number(t.valor_profissional || 0);
+      if (t.status_pagamento === "pago") acc.totalRecebidoClientes += Number(t.valor_total || 0);
+      else acc.totalAReceberClientes += Number(t.valor_total || 0);
+      if (t.pago_ao_profissional) acc.totalPagoProfissionais += Number(t.valor_profissional || 0);
+      else acc.totalAPagarProfissionais += Number(t.valor_profissional || 0);
+      return acc;
+    }, {
+      totalFaturado: 0, totalTaxaApp: 0, totalValorProfissionais: 0,
+      totalRecebidoClientes: 0, totalAReceberClientes: 0,
+      totalPagoProfissionais: 0, totalAPagarProfissionais: 0,
+    });
+    resumo.totalTrabalhos = trabalhos.length;
+    // lucro líquido já realizado = taxa da app dos trabalhos onde o cliente já pagou
+    resumo.lucroRealizado = trabalhos
+      .filter((t) => t.status_pagamento === "pago")
+      .reduce((soma, t) => soma + Number(t.taxa_app || 0), 0);
+
+    // agrupado por profissional
+    const porProfissionalMapa = {};
+    for (const t of trabalhos) {
+      const chave = t.profissional_id || "sem_profissional";
+      if (!porProfissionalMapa[chave]) {
+        porProfissionalMapa[chave] = {
+          profissional_id: t.profissional_id,
+          nome_profissional: t.nome_profissional || "—",
+          totalTrabalhos: 0, totalFaturado: 0, totalValorProfissional: 0,
+          totalPago: 0, totalPendente: 0,
+        };
+      }
+      const grupo = porProfissionalMapa[chave];
+      grupo.totalTrabalhos += 1;
+      grupo.totalFaturado += Number(t.valor_total || 0);
+      grupo.totalValorProfissional += Number(t.valor_profissional || 0);
+      if (t.pago_ao_profissional) grupo.totalPago += Number(t.valor_profissional || 0);
+      else grupo.totalPendente += Number(t.valor_profissional || 0);
+    }
+
+    res.json({
+      resumo,
+      porProfissional: Object.values(porProfissionalMapa).sort((a, b) => b.totalFaturado - a.totalFaturado),
+      trabalhos,
+    });
+  } catch (erro) {
+    console.error(erro);
+    res.status(500).json({ mensagem: "Erro ao obter dados financeiros" });
   }
 });
 
@@ -267,6 +456,13 @@ router.post("/profissionais", async (req, res) => {
       });
     }
 
+    if (!Array.isArray(competencias) || competencias.filter((c) => c && c.trim()).length === 0) {
+      conexao.release();
+      return res.status(400).json({
+        mensagem: "Indique pelo menos uma valência do profissional",
+      });
+    }
+
     await conexao.beginTransaction();
 
     const senhaHash = await bcrypt.hash(senha, 10);
@@ -303,7 +499,7 @@ router.post("/profissionais", async (req, res) => {
       );
     }
 
-    const listaDisponibilidade = (disponibilidade || []).filter((d) => d && d.trim());
+    const listaDisponibilidade = (disponibilidade || []).filter((d) => d && d.trim()).map(normalizarDia);
     if (listaDisponibilidade.length > 0) {
       await conexao.query(
         `INSERT INTO disponibilidade (profissional_id, dia_semana) VALUES ${listaDisponibilidade.map(() => "(?, ?)").join(", ")}`,
@@ -395,7 +591,7 @@ router.put("/profissionais/:id", async (req, res) => {
 
     if (Array.isArray(disponibilidade)) {
       await conexao.query("DELETE FROM disponibilidade WHERE profissional_id = ?", [id]);
-      const lista = disponibilidade.filter((d) => d && d.trim());
+      const lista = disponibilidade.filter((d) => d && d.trim()).map(normalizarDia);
       if (lista.length > 0) {
         await conexao.query(
           `INSERT INTO disponibilidade (profissional_id, dia_semana) VALUES ${lista.map(() => "(?, ?)").join(", ")}`,
@@ -412,6 +608,37 @@ router.put("/profissionais/:id", async (req, res) => {
     res.status(500).json({ mensagem: "Erro ao atualizar profissional" });
   } finally {
     conexao.release();
+  }
+});
+
+// REDEFINIR SENHA DE UM PROFISSIONAL (gestor e admin podem)
+router.put("/profissionais/:id/resetar-senha", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { senha } = req.body;
+
+    if (!senha || senha.length < 6) {
+      return res.status(400).json({ mensagem: "A nova senha deve ter pelo menos 6 caracteres" });
+    }
+
+    const senhaHash = await bcrypt.hash(senha, 10);
+
+    const [resultado] = await pool.query(
+      `UPDATE usuarios u
+       JOIN profissionais p ON p.usuario_id = u.id
+       SET u.senha_hash = ?
+       WHERE p.id = ?`,
+      [senhaHash, id]
+    );
+
+    if (resultado.affectedRows === 0) {
+      return res.status(404).json({ mensagem: "Profissional não encontrado ou ainda não tem conta de login" });
+    }
+
+    res.json({ mensagem: "Senha do profissional redefinida com sucesso" });
+  } catch (erro) {
+    console.error(erro);
+    res.status(500).json({ mensagem: "Erro ao redefinir senha" });
   }
 });
 

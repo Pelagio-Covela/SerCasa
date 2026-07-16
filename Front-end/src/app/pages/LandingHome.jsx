@@ -1,7 +1,18 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Home, Shield, Clock, Star, CheckCircle, ArrowRight, Phone, Mail, MapPin } from "lucide-react";
+import { CartaoCategoria } from "../components/CartaoCategoria";
+import { getCategorias } from "../api";
 
 export function LandingHome() {
+  const [categorias, definirCategorias] = useState([]);
+
+  useEffect(() => {
+    getCategorias()
+      .then((lista) => definirCategorias(lista || []))
+      .catch(() => definirCategorias([]));
+  }, []);
+
   return (
     <div className="min-h-screen bg-white">
       {/* Hero Section */}
@@ -126,22 +137,15 @@ export function LandingHome() {
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[
-              { name: "Empregada Doméstica", icon: "🏠", color: "blue" },
-              { name: "Encanador", icon: "🔧", color: "cyan" },
-              { name: "Cozinheiro", icon: "👨‍🍳", color: "orange" },
-              { name: "Jardineiro", icon: "🌱", color: "green" },
-              { name: "Eletricista", icon: "⚡", color: "yellow" },
-              { name: "Outros Serviços", icon: "✨", color: "purple" },
-            ].map((service) => (
-              <div
-                key={service.name}
-                className="bg-white p-6 rounded-xl shadow-md border border-gray-100 hover:shadow-xl transition-all hover:scale-105"
-              >
-                <div className="text-4xl mb-4">{service.icon}</div>
-                <h3 className="text-xl font-bold text-gray-900">{service.name}</h3>
-              </div>
-            ))}
+            {categorias.length === 0 ? (
+              [1, 2, 3].map((i) => (
+                <div key={i} className="h-52 bg-gray-100 rounded-xl animate-pulse" />
+              ))
+            ) : (
+              categorias.map((categoria) => (
+                <CartaoCategoria key={categoria.id} categoria={categoria} />
+              ))
+            )}
           </div>
 
           <div className="text-center mt-12">

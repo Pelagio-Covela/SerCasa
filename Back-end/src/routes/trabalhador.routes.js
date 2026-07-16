@@ -1,13 +1,21 @@
 const express = require("express");
+const crypto = require("crypto");
 const pool = require("../config/baseDados");
 const { verificarToken, verificarPapel } = require("../middlewares/auth.middleware");
 
 const router = express.Router();
 
-// percentagem que a plataforma retém sobre o valor do serviço — o resto vai
-// para o profissional. No futuro isto pode virar uma configuração editável
-// pelo admin em vez de uma constante fixa.
-const TAXA_APP_PERCENTUAL = 20;
+const { obterTaxaAppPercentual } = require("../utils/configuracoes");
+const { normalizarDia } = require("../utils/disponibilidade");
+const { enviarEmail } = require("../utils/email");
+const { montarEmailFatura } = require("../utils/emailTemplates");
+
+// URL pública do site do cliente, usada para montar o link de pagamento
+// enviado por e-mail. CLIENT_URL é a primeira origem de FRONTEND_URL
+// (que já existe no .env para configurar o CORS).
+function obterUrlCliente() {
+  return process.env.CLIENT_URL || (process.env.FRONTEND_URL || "http://localhost:5173").split(",")[0];
+}
 
 // raio máximo (em metros) que o profissional pode estar do endereço do
 // cliente para o check-in ser aceite
@@ -54,6 +62,55 @@ router.put("/localizacao", async (req, res) => {
   }
 });
 
+// LISTAR PEDIDOS PENDENTES (sem profissional fixo), ORDENADOS PELA DISTÂNCIA
+// ATÉ A POSIÇÃO ATUAL DO TRABALHADOR
+router.get("/pedidos/proximos", async (req, res) => {
+  try {
+    const { profissionalId } = req.usuario;
+
+    const [[profissional]] = await pool.query(
+      "SELECT latitude, longitude, disponivel_agora FROM profissionais WHERE id = ?",
+      [profissionalId]
+    );
+
+    if (!profissional?.latitude || !profissional?.longitude) {
+      return res.status(400).json({
+        mensagem: "Ative a localização no app antes de ver os pedidos próximos",
+      });
+    }
+
+    // se o profissional se marcou como indisponível, não mostra novos
+    // pedidos pra reivindicar (mas continua vendo os que já são dele)
+    if (!profissional.disponivel_agora) {
+      return res.json({ total: 0, pedidos: [] });
+    }
+
+    const { latitude, longitude } = profissional;
+
+    // fórmula de Haversine: calcula distância em km direto no SQL
+    const [linhas] = await pool.query(
+      `SELECT a.*, c.nome AS nome_categoria,
+        (6371 * acos(
+          cos(radians(?)) * cos(radians(a.latitude))
+          * cos(radians(a.longitude) - radians(?))
+          + sin(radians(?)) * sin(radians(a.latitude))
+        )) AS distancia_km
+       FROM agendamentos a
+       LEFT JOIN categorias c ON c.id = a.categoria_id
+       WHERE a.status = 'pendente'
+         AND a.latitude IS NOT NULL
+         AND a.longitude IS NOT NULL
+       ORDER BY distancia_km ASC`,
+      [latitude, longitude, latitude]
+    );
+
+    res.json({ total: linhas.length, pedidos: linhas });
+  } catch (erro) {
+    console.error(erro);
+    res.status(500).json({ mensagem: "Erro ao obter pedidos próximos" });
+  }
+});
+
 // OBTER DETALHE DE UM PEDIDO (precisa pertencer a este profissional, OU
 // estar pendente sem ninguém atribuído — para ver antes de aceitar)
 router.get("/pedidos/:id", async (req, res) => {
@@ -82,6 +139,52 @@ router.get("/pedidos/:id", async (req, res) => {
 
 // FAZER CHECK-IN — só é aceite se o profissional estiver fisicamente
 // próximo (dentro do raio) da localização exacta do pedido
+// EDITAR A DURAÇÃO ESTIMADA (definida ao aceitar; pode ser ajustada a
+// qualquer momento, ex: se surgir um imprevisto durante o serviço)
+router.put("/pedidos/:id/duracao-estimada", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { profissionalId } = req.usuario;
+    const { duracao_estimada_minutos } = req.body;
+
+    if (!duracao_estimada_minutos || duracao_estimada_minutos <= 0) {
+      return res.status(400).json({ mensagem: "Duração estimada inválida" });
+    }
+
+    const [[pedido]] = await pool.query(
+      "SELECT duracao_estimada_minutos FROM agendamentos WHERE id = ? AND profissional_id = ?",
+      [id, profissionalId]
+    );
+
+    if (!pedido) {
+      return res.status(404).json({ mensagem: "Pedido não encontrado para este profissional" });
+    }
+
+    // um ajuste (ao contrário da definição inicial ao aceitar) só pode
+    // AUMENTAR a duração estimada — nunca diminuir o que já foi combinado
+    if (pedido.duracao_estimada_minutos && duracao_estimada_minutos <= pedido.duracao_estimada_minutos) {
+      return res.status(400).json({
+        mensagem: `A nova duração deve ser maior que a atual (${pedido.duracao_estimada_minutos} min).`,
+      });
+    }
+
+    const [resultado] = await pool.query(
+      `UPDATE agendamentos SET duracao_estimada_minutos = ?
+       WHERE id = ? AND profissional_id = ?`,
+      [duracao_estimada_minutos, id, profissionalId]
+    );
+
+    if (resultado.affectedRows === 0) {
+      return res.status(404).json({ mensagem: "Pedido não encontrado para este profissional" });
+    }
+
+    res.json({ mensagem: "Duração estimada atualizada" });
+  } catch (erro) {
+    console.error(erro);
+    res.status(500).json({ mensagem: "Erro ao atualizar duração estimada" });
+  }
+});
+
 router.put("/pedidos/:id/checkin", async (req, res) => {
   try {
     const { id } = req.params;
@@ -93,12 +196,16 @@ router.put("/pedidos/:id/checkin", async (req, res) => {
     }
 
     const [[pedido]] = await pool.query(
-      "SELECT latitude, longitude, status FROM agendamentos WHERE id = ? AND profissional_id = ?",
+      "SELECT latitude, longitude, status, duracao_estimada_minutos FROM agendamentos WHERE id = ? AND profissional_id = ?",
       [id, profissionalId]
     );
 
     if (!pedido) {
       return res.status(404).json({ mensagem: "Pedido não encontrado para este profissional" });
+    }
+
+    if (!pedido.duracao_estimada_minutos) {
+      return res.status(400).json({ mensagem: "Defina a duração estimada do serviço antes de fazer o check-in" });
     }
 
     if (!pedido.latitude || !pedido.longitude) {
@@ -136,9 +243,11 @@ router.put("/pedidos/:id/checkout", async (req, res) => {
     const { profissionalId } = req.usuario;
 
     const [[pedido]] = await pool.query(
-      `SELECT a.checkin_hora, p.preco_por_hora
+      `SELECT a.checkin_hora, a.nome_cliente, a.email_cliente, a.endereco, a.data,
+              p.preco_por_hora, c.nome AS nome_categoria
        FROM agendamentos a
        JOIN profissionais p ON p.id = a.profissional_id
+       LEFT JOIN categorias c ON c.id = a.categoria_id
        WHERE a.id = ? AND a.profissional_id = ?`,
       [id, profissionalId]
     );
@@ -152,18 +261,32 @@ router.put("/pedidos/:id/checkout", async (req, res) => {
     }
 
     const duracaoMinutos = Math.max(1, Math.round((Date.now() - new Date(pedido.checkin_hora).getTime()) / 60000));
+    const taxaPercentual = await obterTaxaAppPercentual();
     const valorTotal = Number(((pedido.preco_por_hora || 0) * (duracaoMinutos / 60)).toFixed(2));
-    const taxaApp = Number((valorTotal * (TAXA_APP_PERCENTUAL / 100)).toFixed(2));
+    const taxaApp = Number((valorTotal * (taxaPercentual / 100)).toFixed(2));
     const valorProfissional = Number((valorTotal - taxaApp).toFixed(2));
+    const tokenPagamento = crypto.randomBytes(24).toString("hex");
 
     await pool.query(
       `UPDATE agendamentos
        SET status = 'concluido', checkout_hora = NOW(), checkout_lat = ?, checkout_lng = ?,
            duracao_minutos = ?, valor_total = ?, valor_profissional = ?, taxa_app = ?,
-           status_pagamento = 'pendente'
+           status_pagamento = 'pendente', token_pagamento = ?
        WHERE id = ?`,
-      [latitude || null, longitude || null, duracaoMinutos, valorTotal, valorProfissional, taxaApp, id]
+      [latitude || null, longitude || null, duracaoMinutos, valorTotal, valorProfissional, taxaApp, tokenPagamento, id]
     );
+
+    // envia a fatura por e-mail com o link de pagamento (não bloqueia a
+    // resposta ao profissional caso o envio demore ou falhe)
+    if (pedido.email_cliente) {
+      const linkPagamento = `${obterUrlCliente()}/pagamento/${tokenPagamento}`;
+      const html = montarEmailFatura({
+        agendamento: { ...pedido, duracao_minutos: duracaoMinutos, valor_total: valorTotal, nome_categoria: pedido.nome_categoria },
+        linkPagamento,
+      });
+      enviarEmail({ para: pedido.email_cliente, assunto: "A sua fatura ServCasa está pronta", html })
+        .catch((erro) => console.error("[checkout] falha ao enviar fatura:", erro.message));
+    }
 
     res.json({
       mensagem: "Check-out realizado com sucesso",
@@ -239,6 +362,25 @@ router.get("/perfil", async (req, res) => {
 });
 
 // ATUALIZAR DISPONIBILIDADE (dias da semana) DO PRÓPRIO PERFIL
+// LIGAR/DESLIGAR A DISPONIBILIDADE AGORA (independente da agenda semanal —
+// tipo "ficar online/offline" a qualquer momento)
+router.put("/disponivel-agora", async (req, res) => {
+  try {
+    const { profissionalId } = req.usuario;
+    const { disponivel } = req.body;
+
+    await pool.query(
+      "UPDATE profissionais SET disponivel_agora = ? WHERE id = ?",
+      [!!disponivel, profissionalId]
+    );
+
+    res.json({ mensagem: disponivel ? "Agora está disponível" : "Agora está indisponível" });
+  } catch (erro) {
+    console.error(erro);
+    res.status(500).json({ mensagem: "Erro ao atualizar disponibilidade" });
+  }
+});
+
 router.put("/perfil/disponibilidade", async (req, res) => {
   const conexao = await pool.getConnection();
   try {
@@ -248,7 +390,7 @@ router.put("/perfil/disponibilidade", async (req, res) => {
     await conexao.beginTransaction();
     await conexao.query("DELETE FROM disponibilidade WHERE profissional_id = ?", [profissionalId]);
 
-    const lista = (disponibilidade || []).filter((d) => d && d.trim());
+    const lista = (disponibilidade || []).filter((d) => d && d.trim()).map(normalizarDia);
     if (lista.length > 0) {
       await conexao.query(
         `INSERT INTO disponibilidade (profissional_id, dia_semana) VALUES ${lista.map(() => "(?, ?)").join(", ")}`,
@@ -288,60 +430,18 @@ router.get("/pedidos", async (req, res) => {
   }
 });
 
-// LISTAR PEDIDOS PENDENTES (sem profissional fixo), ORDENADOS PELA DISTÂNCIA
-// ATÉ A POSIÇÃO ATUAL DO TRABALHADOR
-router.get("/pedidos/proximos", async (req, res) => {
-  try {
-    const { profissionalId } = req.usuario;
-
-    const [[profissional]] = await pool.query(
-      "SELECT latitude, longitude FROM profissionais WHERE id = ?",
-      [profissionalId]
-    );
-
-    if (!profissional?.latitude || !profissional?.longitude) {
-      return res.status(400).json({
-        mensagem: "Ative a localização no app antes de ver os pedidos próximos",
-      });
-    }
-
-    const { latitude, longitude } = profissional;
-
-    // fórmula de Haversine: calcula distância em km direto no SQL
-    const [linhas] = await pool.query(
-      `SELECT a.*, c.nome AS nome_categoria,
-        (6371 * acos(
-          cos(radians(?)) * cos(radians(a.latitude))
-          * cos(radians(a.longitude) - radians(?))
-          + sin(radians(?)) * sin(radians(a.latitude))
-        )) AS distancia_km
-       FROM agendamentos a
-       LEFT JOIN categorias c ON c.id = a.categoria_id
-       WHERE a.status = 'pendente'
-         AND a.latitude IS NOT NULL
-         AND a.longitude IS NOT NULL
-       ORDER BY distancia_km ASC`,
-      [latitude, longitude, latitude]
-    );
-
-    res.json({ total: linhas.length, pedidos: linhas });
-  } catch (erro) {
-    console.error(erro);
-    res.status(500).json({ mensagem: "Erro ao obter pedidos próximos" });
-  }
-});
-
 // ACEITAR UM PEDIDO
 router.put("/pedidos/:id/aceitar", async (req, res) => {
   try {
     const { id } = req.params;
     const { profissionalId } = req.usuario;
+    const { duracao_estimada_minutos } = req.body || {};
 
     const [resultado] = await pool.query(
       `UPDATE agendamentos
-       SET profissional_id = ?, status = 'aceite'
+       SET profissional_id = ?, status = 'aceite', duracao_estimada_minutos = ?
        WHERE id = ? AND status = 'pendente'`,
-      [profissionalId, id]
+      [profissionalId, duracao_estimada_minutos || null, id]
     );
 
     if (resultado.affectedRows === 0) {

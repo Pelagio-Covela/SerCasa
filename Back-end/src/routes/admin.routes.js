@@ -141,38 +141,6 @@ router.put("/gestores/:id/resetar-senha", async (req, res) => {
   }
 });
 
-// ─── Recuperação de senha de trabalhadores (também acima do gestor) ─────────
-
-router.put("/trabalhadores/:profissionalId/resetar-senha", async (req, res) => {
-  try {
-    const { profissionalId } = req.params;
-    const { senha } = req.body;
-
-    if (!senha || senha.length < 6) {
-      return res.status(400).json({ mensagem: "A nova senha deve ter pelo menos 6 caracteres" });
-    }
-
-    const senhaHash = await bcrypt.hash(senha, 10);
-
-    const [resultado] = await pool.query(
-      `UPDATE usuarios u
-       JOIN profissionais p ON p.usuario_id = u.id
-       SET u.senha_hash = ?
-       WHERE p.id = ?`,
-      [senhaHash, profissionalId]
-    );
-
-    if (resultado.affectedRows === 0) {
-      return res.status(404).json({ mensagem: "Profissional não encontrado" });
-    }
-
-    res.json({ mensagem: "Senha do trabalhador redefinida com sucesso" });
-  } catch (erro) {
-    console.error(erro);
-    res.status(500).json({ mensagem: "Erro ao redefinir senha" });
-  }
-});
-
 // ─── Categorias de serviço (o admin gere sem precisar mexer no banco) ──────
 
 // CRIAR CATEGORIA
@@ -242,6 +210,53 @@ router.delete("/categorias/:id", async (req, res) => {
   } catch (erro) {
     console.error(erro);
     res.status(500).json({ mensagem: "Erro ao remover categoria" });
+  }
+});
+
+// ─── Configurações do sistema (taxa da app, etc.) ──────────────────────────
+
+// LISTAR CONFIGURAÇÕES
+router.get("/configuracoes", async (req, res) => {
+  try {
+    const [linhas] = await pool.query("SELECT chave, valor, descricao, atualizado_em FROM configuracoes");
+    res.json({ configuracoes: linhas });
+  } catch (erro) {
+    console.error(erro);
+    res.status(500).json({ mensagem: "Erro ao obter configurações (a migração 009 foi aplicada?)" });
+  }
+});
+
+// ATUALIZAR UMA CONFIGURAÇÃO
+router.put("/configuracoes/:chave", async (req, res) => {
+  try {
+    const { chave } = req.params;
+    const { valor } = req.body;
+
+    if (valor === undefined || valor === null || String(valor).trim() === "") {
+      return res.status(400).json({ mensagem: "Valor é obrigatório" });
+    }
+
+    // validação específica da taxa: precisa ser um número entre 0 e 100
+    if (chave === "taxa_app_percentual") {
+      const numero = Number(valor);
+      if (!Number.isFinite(numero) || numero < 0 || numero > 100) {
+        return res.status(400).json({ mensagem: "A taxa deve ser um número entre 0 e 100" });
+      }
+    }
+
+    const [resultado] = await pool.query(
+      "UPDATE configuracoes SET valor = ? WHERE chave = ?",
+      [String(valor), chave]
+    );
+
+    if (resultado.affectedRows === 0) {
+      return res.status(404).json({ mensagem: "Configuração não encontrada" });
+    }
+
+    res.json({ mensagem: "Configuração atualizada com sucesso" });
+  } catch (erro) {
+    console.error(erro);
+    res.status(500).json({ mensagem: "Erro ao atualizar configuração" });
   }
 });
 

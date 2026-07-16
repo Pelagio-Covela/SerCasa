@@ -1,11 +1,12 @@
 import { Link } from "react-router-dom";
 import { Home, Droplet, ChefHat, Leaf, Zap, PaintBucket, Hammer, Ruler, Wind, Shield, Car, Baby, Shirt } from "lucide-react";
+import { corDeFundoCategoria } from "../utils/cores";
 
 export function CartaoCategoria({ categoria }) {
   if (!categoria) return null;
 
   const obterIcone = () => {
-    switch (categoria.icone) {
+    switch (String(categoria.icone || "").trim().toLowerCase()) {
       case "home":
         return <Home className="w-8 h-8 text-white" />;
       case "droplet":
@@ -41,7 +42,8 @@ export function CartaoCategoria({ categoria }) {
     <Link to={`/categoria/${categoria.id}`} className="group block h-full">
       <div className="h-full bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 p-6 text-center border border-gray-100 hover:border-blue-200 flex flex-col items-center justify-start">
         <div
-          className={`w-16 h-16 ${categoria.cor} rounded-xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform flex-shrink-0`}
+          className="w-16 h-16 rounded-xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform flex-shrink-0"
+          style={{ background: corDeFundoCategoria(categoria.cor) }}
         >
           {obterIcone()}
         </div>
