@@ -1,6 +1,73 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 @import 'tailwindcss';
 
+/* ── Tema (Light / Dark / Predefinido no dispositivo) ────────────────────
+   --bg      = fundo das telas
+   --fg-rgb  = cor do texto/ícones/bordas, em "R,G,B" (sem parênteses) para
+               poder ser usada em rgba(var(--fg-rgb), X) e reaproveitar
+               exatamente as mesmas opacidades já desenhadas para o tema
+               escuro, sem precisar de uma variável nova para cada tom.
+   O padrão (sem escolha do utilizador) é sempre Light. */
+:root {
+  --bg: #f4f5f8;
+  --surface-elevated: #ffffff;
+  --surface-card: #ffffff;
+  --surface-border: rgba(3, 2, 19, 0.09);
+  --fg-rgb: 3, 2, 19;
+  --color-scheme: light;
+  /* cores de destaque: no claro usam o tom mais escuro/saturado (senão não
+     têm contraste num fundo claro); no escuro usam o tom mais claro/vivo
+     (senão não têm contraste num fundo escuro) — é o mesmo padrão que
+     apps como o WhatsApp e o Notion seguem */
+  --accent-green: #16a34a;
+  --accent-red: #dc2626;
+  --accent-blue: #2563eb;
+  --accent-amber: #b45309;
+  --accent-green-rgb: 22, 163, 74;
+  --accent-red-rgb: 220, 38, 38;
+  --accent-blue-rgb: 37, 99, 235;
+  --accent-amber-rgb: 180, 83, 9;
+}
+
+[data-tema="dark"] {
+  --bg: #030213;
+  --surface-elevated: #06070f;
+  --surface-card: rgba(255, 255, 255, 0.05);
+  --surface-border: rgba(255, 255, 255, 0.08);
+  --fg-rgb: 255, 255, 255;
+  --color-scheme: dark;
+  --accent-green: #4ade80;
+  --accent-red: #f87171;
+  --accent-blue: #60a5fa;
+  --accent-amber: #fbbf24;
+  --accent-green-rgb: 74, 222, 128;
+  --accent-red-rgb: 248, 113, 113;
+  --accent-blue-rgb: 96, 165, 250;
+  --accent-amber-rgb: 251, 191, 36;
+}
+
+/* "Predefinido no dispositivo": só entra em jogo quando o utilizador não
+   escolheu nada (nem "dark" nem "light" foi guardado) — nesse caso segue a
+   preferência do sistema operativo/navegador. */
+@media (prefers-color-scheme: dark) {
+  [data-tema="device"] {
+    --bg: #030213;
+    --surface-elevated: #06070f;
+    --surface-card: rgba(255, 255, 255, 0.05);
+    --surface-border: rgba(255, 255, 255, 0.08);
+    --fg-rgb: 255, 255, 255;
+    --color-scheme: dark;
+    --accent-green: #4ade80;
+    --accent-red: #f87171;
+    --accent-blue: #60a5fa;
+    --accent-amber: #fbbf24;
+    --accent-green-rgb: 74, 222, 128;
+    --accent-red-rgb: 248, 113, 113;
+    --accent-blue-rgb: 96, 165, 250;
+    --accent-amber-rgb: 251, 191, 36;
+  }
+}
+
 * {
   box-sizing: border-box;
   -webkit-tap-highlight-color: transparent;
@@ -13,9 +80,11 @@ html, body, #root {
 
 body {
   font-family: 'Inter', sans-serif;
-  background: #030213;
-  color: #fff;
+  background: var(--bg);
+  color: rgb(var(--fg-rgb));
   overscroll-behavior-y: none;
+  color-scheme: var(--color-scheme);
+  transition: background-color 0.2s ease;
 }
 
 /* Respeita a área segura em iPhones com notch/home indicator */

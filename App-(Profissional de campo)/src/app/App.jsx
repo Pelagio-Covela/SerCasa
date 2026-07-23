@@ -3,7 +3,7 @@ import {
   Home, Map, Clock, User, Phone, Eye, EyeOff,
   LogOut, MapPin, ArrowLeft, Navigation,
   CheckCircle, AlertCircle, Calendar,
-  Star, Loader2, Wallet, Check, Timer, RefreshCw, Power,
+  Star, Loader2, Wallet, Check, Timer, RefreshCw, Power, Sun, Moon, Smartphone,
 } from "lucide-react";
 import { MapContainer, TileLayer, Marker, useMap } from "react-leaflet";
 import L from "leaflet";
@@ -67,12 +67,12 @@ const EMOJI_CATEGORIA = {
 // estados internos "aceite" e "a_caminho", anteriores ao check-in);
 // Em execução = check-in feito, sem check-out ainda; Concluído = os dois feitos.
 const STATUS_CFG = {
-  pendente: { label: "Pendente", cls: "bg-amber-500/20 text-amber-400" },
-  aceite: { label: "Pendente", cls: "bg-amber-500/20 text-amber-400" },
-  a_caminho: { label: "Pendente", cls: "bg-amber-500/20 text-amber-400" },
-  em_execucao: { label: "Em execução", cls: "bg-blue-500/20 text-blue-400" },
-  concluido: { label: "Concluído", cls: "bg-green-500/20 text-green-400" },
-  cancelado: { label: "Cancelado", cls: "bg-red-500/20 text-red-400" },
+  pendente: { label: "Pendente", cls: "bg-amber-500/20 text-[var(--accent-amber)]" },
+  aceite: { label: "Pendente", cls: "bg-amber-500/20 text-[var(--accent-amber)]" },
+  a_caminho: { label: "Pendente", cls: "bg-amber-500/20 text-[var(--accent-amber)]" },
+  em_execucao: { label: "Em execução", cls: "bg-blue-500/20 text-[var(--accent-blue)]" },
+  concluido: { label: "Concluído", cls: "bg-green-500/20 text-[var(--accent-green)]" },
+  cancelado: { label: "Cancelado", cls: "bg-red-500/20 text-[var(--accent-red)]" },
 };
 
 function Badge({ status }) {
@@ -125,15 +125,14 @@ function SeletorDuracaoRelogio({ valorMinutos, aoMudar, minimoMinutos }) {
         onChange={lidarComMudanca}
         className="w-full text-center text-[28px] font-bold rounded-2xl py-3 px-4"
         style={{
-          background: "rgba(255,255,255,0.06)",
-          border: "1px solid rgba(255,255,255,0.12)",
-          color: "white",
-          colorScheme: "dark",
+          background: "var(--surface-card)",
+          border: "1px solid rgba(var(--fg-rgb),0.12)",
+          color: "rgb(var(--fg-rgb))",
         }}
       />
-      <p className="text-center text-[11px] mt-1.5" style={{ color: "rgba(255,255,255,0.35)" }}>horas : minutos</p>
+      <p className="text-center text-[11px] mt-1.5" style={{ color: "rgba(var(--fg-rgb),0.35)" }}>horas : minutos</p>
       {erro && (
-        <p className="text-center text-[12px] mt-1" style={{ color: "#f87171" }}>{erro}</p>
+        <p className="text-center text-[12px] mt-1" style={{ color: "var(--accent-red)" }}>{erro}</p>
       )}
     </div>
   );
@@ -154,7 +153,7 @@ function MiniMapa({ pedidos = [], altura = 160, aoTap }) {
     : [-25.9692, 32.5732]; // Maputo, usado só se não houver nenhum pedido com localização
 
   return (
-    <div style={{ height: altura, background: "#080f1c" }}>
+    <div style={{ height: altura, background: "var(--bg)" }}>
       <MapContainer center={centro} zoom={13} zoomControl={false} attributionControl={false} style={{ width: "100%", height: "100%" }}>
         <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
         {comCoordenadas.map((p) => (
@@ -195,14 +194,14 @@ function TelaLogin({ aoEntrar }) {
   }
 
   const inputStyle = {
-    background: "rgba(255,255,255,0.06)",
-    border: "1px solid rgba(255,255,255,0.1)",
+    background: "var(--surface-card)",
+    border: "1px solid rgba(var(--fg-rgb),0.1)",
     outline: "none",
-    color: "white",
+    color: "rgb(var(--fg-rgb))",
   };
 
   return (
-    <div className="flex flex-col h-full px-6 pt-14 pb-8" style={{ background: "#030213" }}>
+    <div className="flex flex-col h-full px-6 pt-14 pb-8" style={{ background: "var(--bg)" }}>
       <div className="flex-1 flex flex-col">
         <div className="flex flex-col items-center mb-10">
           <img
@@ -211,13 +210,13 @@ function TelaLogin({ aoEntrar }) {
             className="w-24 h-24 rounded-3xl mb-5 object-contain"
             style={{ boxShadow: "0 8px 32px rgba(37,99,235,0.35)" }}
           />
-          <h1 className="text-white text-[28px] font-bold tracking-tight">ServCasa</h1>
-          <p className="text-sm mt-1" style={{ color: "rgba(255,255,255,0.35)" }}>App do Profissional</p>
+          <h1 className="text-[rgb(var(--fg-rgb))] text-[28px] font-bold tracking-tight">ServCasa</h1>
+          <p className="text-sm mt-1" style={{ color: "rgba(var(--fg-rgb),0.35)" }}>App do Profissional</p>
         </div>
 
         <form onSubmit={lidarComLogin} className="flex flex-col gap-4">
           <div>
-            <label className="block text-[11px] font-semibold uppercase tracking-widest mb-2" style={{ color: "rgba(255,255,255,0.45)" }}>
+            <label className="block text-[11px] font-semibold uppercase tracking-widest mb-2" style={{ color: "rgba(var(--fg-rgb),0.45)" }}>
               E-mail
             </label>
             <input
@@ -229,7 +228,7 @@ function TelaLogin({ aoEntrar }) {
             />
           </div>
           <div>
-            <label className="block text-[11px] font-semibold uppercase tracking-widest mb-2" style={{ color: "rgba(255,255,255,0.45)" }}>
+            <label className="block text-[11px] font-semibold uppercase tracking-widest mb-2" style={{ color: "rgba(var(--fg-rgb),0.45)" }}>
               Senha
             </label>
             <div className="relative">
@@ -242,14 +241,14 @@ function TelaLogin({ aoEntrar }) {
               />
               <button type="button" onClick={() => setMostrarSenha(!mostrarSenha)}
                 className="absolute right-4 top-1/2 -translate-y-1/2 transition-colors p-1"
-                style={{ color: "rgba(255,255,255,0.35)" }}>
+                style={{ color: "rgba(var(--fg-rgb),0.35)" }}>
                 {mostrarSenha ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
             </div>
           </div>
 
           {erro && (
-            <div className="flex items-center gap-2 text-red-400 text-sm">
+            <div className="flex items-center gap-2 text-[var(--accent-red)] text-sm">
               <AlertCircle size={14} /><span>{erro}</span>
             </div>
           )}
@@ -263,7 +262,7 @@ function TelaLogin({ aoEntrar }) {
         </form>
       </div>
 
-      <p className="text-center text-[11px]" style={{ color: "rgba(255,255,255,0.18)" }}>
+      <p className="text-center text-[11px]" style={{ color: "rgba(var(--fg-rgb),0.18)" }}>
         Conta criada pelo gestor no backoffice
       </p>
     </div>
@@ -276,27 +275,27 @@ function CardPedido({ pedido, aoTap, distancia }) {
   return (
     <button onClick={() => aoTap(pedido)}
       className="w-full text-left rounded-2xl p-4 mb-3 transition-transform active:scale-[0.97]"
-      style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
+      style={{ background: "var(--surface-card)", border: "1px solid var(--surface-border)" }}>
       <div className="flex items-start gap-3">
         <div className="w-11 h-11 rounded-xl flex items-center justify-center text-xl flex-shrink-0"
-          style={{ background: "rgba(255,255,255,0.08)" }}>
+          style={{ background: "var(--surface-card)" }}>
           {EMOJI_CATEGORIA[pedido.categoria_id] || "🧰"}
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between mb-0.5 gap-2">
-            <span className="text-white font-semibold text-[15px] truncate">{pedido.nome_cliente}</span>
+            <span className="text-[rgb(var(--fg-rgb))] font-semibold text-[15px] truncate" style={{ lineHeight: 1.5 }}>{pedido.nome_cliente}</span>
             <Badge status={pedido.status} />
           </div>
-          <div className="flex items-center gap-1 text-[12px] mb-1" style={{ color: "rgba(255,255,255,0.35)" }}>
+          <div className="flex items-center gap-1 text-[12px] mb-1" style={{ color: "rgba(var(--fg-rgb),0.35)" }}>
             <MapPin size={11} />
             <span className="truncate">{pedido.endereco}</span>
           </div>
           <div className="flex items-center justify-between mt-2">
-            <span className="flex items-center gap-1 text-[12px]" style={{ color: "rgba(255,255,255,0.35)" }}>
+            <span className="flex items-center gap-1 text-[12px]" style={{ color: "rgba(var(--fg-rgb),0.35)" }}>
               <Calendar size={11} />{formatarData(pedido.data)} às {(pedido.hora || "").slice(0, 5)}
             </span>
             {(distancia ?? pedido.distancia_km) != null && (
-              <span className="text-[12px]" style={{ color: "rgba(255,255,255,0.35)" }}>
+              <span className="text-[12px]" style={{ color: "rgba(var(--fg-rgb),0.35)" }}>
                 {Number(distancia ?? pedido.distancia_km).toFixed(1)} km
               </span>
             )}
@@ -395,14 +394,14 @@ function TelaInicio({ utilizador, aoAbrirPedido }) {
   const primeiroNome = (utilizador?.nome || "").split(" ")[0];
 
   return (
-    <div className="flex flex-col h-full" style={{ background: "#030213" }}>
+    <div className="flex flex-col h-full" style={{ background: "var(--bg)" }}>
       <div className="px-5 pt-5 pb-3 flex items-center justify-between">
         <div>
-          <p className="text-sm" style={{ color: "rgba(255,255,255,0.4)" }}>Olá,</p>
-          <h2 className="text-white text-[22px] font-bold">{primeiroNome} 👋</h2>
+          <p className="text-sm" style={{ color: "rgba(var(--fg-rgb),0.4)" }}>Olá,</p>
+          <h2 className="text-[rgb(var(--fg-rgb))] text-[22px] font-bold">{primeiroNome} 👋</h2>
         </div>
-        <button onClick={carregar} className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: "rgba(255,255,255,0.06)" }}>
-          <RefreshCw size={15} className="text-white/60" />
+        <button onClick={carregar} className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: "var(--surface-card)" }}>
+          <RefreshCw size={15} className="text-[rgb(var(--fg-rgb))]/60" />
         </button>
       </div>
 
@@ -415,13 +414,13 @@ function TelaInicio({ utilizador, aoAbrirPedido }) {
             <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{
               background: disponivelAgora ? "rgba(22,163,74,0.15)" : "rgba(212,24,61,0.15)",
             }}>
-              <Power size={16} color={disponivelAgora ? "#4ade80" : "#f87171"} />
+              <Power size={16} color={disponivelAgora ? "var(--accent-green)" : "var(--accent-red)"} />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-[13px] font-semibold" style={{ color: disponivelAgora ? "#4ade80" : "#f87171" }}>
+              <p className="text-[13px] font-semibold" style={{ color: disponivelAgora ? "var(--accent-green)" : "var(--accent-red)" }}>
                 {disponivelAgora ? "Você está disponível" : "Você está indisponível"}
               </p>
-              <p className="text-[11px]" style={{ color: "rgba(255,255,255,0.4)" }}>
+              <p className="text-[11px]" style={{ color: "rgba(var(--fg-rgb),0.4)" }}>
                 {disponivelAgora ? "A receber novos pedidos próximos" : "Não vai receber novos pedidos agora"}
               </p>
             </div>
@@ -429,33 +428,33 @@ function TelaInicio({ utilizador, aoAbrirPedido }) {
               className="text-[12px] font-semibold px-3 py-2 rounded-xl flex-shrink-0 disabled:opacity-60"
               style={{
                 background: disponivelAgora ? "rgba(212,24,61,0.15)" : "rgba(22,163,74,0.15)",
-                color: disponivelAgora ? "#f87171" : "#4ade80",
+                color: disponivelAgora ? "var(--accent-red)" : "var(--accent-green)",
               }}>
               {alterandoDisponibilidade ? "..." : disponivelAgora ? "Ficar indisponível" : "Ficar disponível"}
             </button>
           </div>
           {erroDisponibilidade && (
-            <p className="text-[11px] mt-2" style={{ color: "#f87171" }}>{erroDisponibilidade}</p>
+            <p className="text-[11px] mt-2" style={{ color: "var(--accent-red)" }}>{erroDisponibilidade}</p>
           )}
         </div>
       )}
 
       <div className="flex gap-3 px-5 mb-4">
         <div className="flex-1 rounded-2xl p-4" style={{ background: "rgba(22,163,74,0.1)", border: "1px solid rgba(22,163,74,0.2)" }}>
-          <p className="text-[11px] font-semibold uppercase tracking-wide mb-1" style={{ color: "rgba(74,222,128,0.7)" }}>Esta semana</p>
-          <p className="text-[#4ade80] text-lg font-bold">{R(ganhoSemana)}</p>
+          <p className="text-[11px] font-semibold uppercase tracking-wide mb-1" style={{ color: "rgba(var(--accent-green-rgb),0.7)" }}>Esta semana</p>
+          <p className="text-[var(--accent-green)] text-lg font-bold">{R(ganhoSemana)}</p>
         </div>
-        <div className="flex-1 rounded-2xl p-4" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
-          <p className="text-[11px] font-semibold uppercase tracking-wide mb-1" style={{ color: "rgba(255,255,255,0.4)" }}>Pedidos</p>
-          <p className="text-white text-lg font-bold">{meusPedidos.length} ativos</p>
+        <div className="flex-1 rounded-2xl p-4" style={{ background: "var(--surface-card)", border: "1px solid var(--surface-border)" }}>
+          <p className="text-[11px] font-semibold uppercase tracking-wide mb-1" style={{ color: "rgba(var(--fg-rgb),0.4)" }}>Pedidos</p>
+          <p className="text-[rgb(var(--fg-rgb))] text-lg font-bold">{meusPedidos.length} ativos</p>
         </div>
       </div>
 
-      <div className="flex mx-5 mb-4 rounded-xl p-1" style={{ background: "rgba(255,255,255,0.06)" }}>
+      <div className="flex mx-5 mb-4 rounded-xl p-1" style={{ background: "var(--surface-card)" }}>
         {["meus", "proximos"].map(a => (
           <button key={a} onClick={() => setAba(a)}
             className="flex-1 py-2.5 rounded-lg text-[13px] font-semibold transition-all"
-            style={{ background: aba === a ? "white" : "transparent", color: aba === a ? "#030213" : "rgba(255,255,255,0.45)" }}>
+            style={{ background: aba === a ? "white" : "transparent", color: aba === a ? "#030213" : "rgba(var(--fg-rgb),0.45)" }}>
             {a === "meus" ? "Meus pedidos" : "Próximos"}
           </button>
         ))}
@@ -464,20 +463,20 @@ function TelaInicio({ utilizador, aoAbrirPedido }) {
       <div className="flex-1 overflow-y-auto px-5 pb-4">
         {estado === "carregando" ? (
           <div className="flex flex-col items-center justify-center py-16">
-            <Loader2 size={24} className="animate-spin text-white/30 mb-3" />
-            <p className="text-sm" style={{ color: "rgba(255,255,255,0.3)" }}>A carregar pedidos...</p>
+            <Loader2 size={24} className="animate-spin text-[rgb(var(--fg-rgb))]/30 mb-3" />
+            <p className="text-sm" style={{ color: "rgba(var(--fg-rgb),0.3)" }}>A carregar pedidos...</p>
           </div>
         ) : estado === "erro" ? (
           <div className="flex flex-col items-center justify-center py-16">
-            <AlertCircle size={32} className="text-red-400/60 mb-3" />
-            <p className="text-sm mb-3" style={{ color: "rgba(255,255,255,0.4)" }}>Erro ao carregar pedidos</p>
-            <button onClick={carregar} className="text-[13px] font-semibold px-4 py-2 rounded-xl" style={{ background: "rgba(255,255,255,0.08)", color: "white" }}>Tentar novamente</button>
+            <AlertCircle size={32} className="text-[var(--accent-red)]/60 mb-3" />
+            <p className="text-sm mb-3" style={{ color: "rgba(var(--fg-rgb),0.4)" }}>Erro ao carregar pedidos</p>
+            <button onClick={carregar} className="text-[13px] font-semibold px-4 py-2 rounded-xl" style={{ background: "var(--surface-card)", color: "rgb(var(--fg-rgb))" }}>Tentar novamente</button>
           </div>
 
         ) : pedidos.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16">
             <div className="text-5xl mb-4">📋</div>
-            <p className="text-sm" style={{ color: "rgba(255,255,255,0.3)" }}>
+            <p className="text-sm" style={{ color: "rgba(var(--fg-rgb),0.3)" }}>
               {aba === "proximos" ? "Nenhum pedido agendado para as próximas semanas." : "Nenhum pedido agendado para esta semana."}
             </p>
           </div>
@@ -528,8 +527,8 @@ function TelaDetalhePedido({ pedidoId, aoVoltar, aoCheckin, minhaLocalizacao }) 
 
   if (estado === "carregando" || !pedido) {
     return (
-      <div className="flex flex-col h-full items-center justify-center" style={{ background: "#030213" }}>
-        <Loader2 size={24} className="animate-spin text-white/30" />
+      <div className="flex flex-col h-full items-center justify-center" style={{ background: "var(--bg)" }}>
+        <Loader2 size={24} className="animate-spin text-[rgb(var(--fg-rgb))]/30" />
       </div>
     );
   }
@@ -539,66 +538,66 @@ function TelaDetalhePedido({ pedidoId, aoVoltar, aoCheckin, minhaLocalizacao }) 
     : null;
 
   return (
-    <div className="flex flex-col h-full" style={{ background: "#030213" }}>
+    <div className="flex flex-col h-full" style={{ background: "var(--bg)" }}>
       <div className="flex items-center gap-3 px-5 pt-4 pb-3">
         <button onClick={aoVoltar}
           className="w-9 h-9 rounded-xl flex items-center justify-center transition-transform active:scale-90"
-          style={{ background: "rgba(255,255,255,0.08)" }}>
-          <ArrowLeft size={18} className="text-white" />
+          style={{ background: "var(--surface-card)" }}>
+          <ArrowLeft size={18} className="text-[rgb(var(--fg-rgb))]" />
         </button>
-        <h2 className="text-white font-bold text-[17px]">Detalhe do Pedido</h2>
+        <h2 className="text-[rgb(var(--fg-rgb))] font-bold text-[17px]">Detalhe do Pedido</h2>
       </div>
 
       <div className="flex-1 overflow-y-auto px-5 pb-4">
         <div className="rounded-2xl overflow-hidden mb-4 relative" style={{ height: 158 }}>
           <MiniMapa pedidos={[pedido]} altura={158} />
           <div className="absolute bottom-0 left-0 right-0 p-3" style={{ background: "linear-gradient(transparent, rgba(0,0,0,0.85))" }}>
-            <p className="text-white text-[13px] font-semibold">{pedido.endereco}</p>
+            <p className="text-[rgb(var(--fg-rgb))] text-[13px] font-semibold">{pedido.endereco}</p>
           </div>
         </div>
 
-        <div className="rounded-2xl p-4 mb-3" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
+        <div className="rounded-2xl p-4 mb-3" style={{ background: "var(--surface-card)", border: "1px solid var(--surface-border)" }}>
           <div className="flex items-center gap-3 mb-4">
             <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl"
-              style={{ background: "rgba(255,255,255,0.08)" }}>
+              style={{ background: "var(--surface-card)" }}>
               {EMOJI_CATEGORIA[pedido.categoria_id] || "🧰"}
             </div>
             <div className="flex-1">
-              <h3 className="text-white font-bold text-[17px]">{pedido.nome_cliente}</h3>
+              <h3 className="text-[rgb(var(--fg-rgb))] font-bold text-[17px]" style={{ lineHeight: 1.5 }}>{pedido.nome_cliente}</h3>
             </div>
             <Badge status={pedido.status} />
           </div>
-          {pedido.descricao && <p className="text-[14px] leading-relaxed mb-4" style={{ color: "rgba(255,255,255,0.6)" }}>{pedido.descricao}</p>}
+          {pedido.descricao && <p className="text-[14px] leading-relaxed mb-4" style={{ color: "rgba(var(--fg-rgb),0.6)" }}>{pedido.descricao}</p>}
           <div className="flex flex-col gap-2.5">
-            <div className="flex items-center gap-2 text-[13px]" style={{ color: "rgba(255,255,255,0.5)" }}>
-              <Calendar size={14} style={{ color: "rgba(255,255,255,0.25)", flexShrink: 0 }} />
+            <div className="flex items-center gap-2 text-[13px]" style={{ color: "rgba(var(--fg-rgb),0.5)" }}>
+              <Calendar size={14} style={{ color: "rgba(var(--fg-rgb),0.25)", flexShrink: 0 }} />
               <span>{formatarData(pedido.data)} às {(pedido.hora || "").slice(0, 5)}</span>
             </div>
-            <div className="flex items-center gap-2 text-[13px]" style={{ color: "rgba(255,255,255,0.5)" }}>
-              <MapPin size={14} style={{ color: "rgba(255,255,255,0.25)", flexShrink: 0 }} />
+            <div className="flex items-center gap-2 text-[13px]" style={{ color: "rgba(var(--fg-rgb),0.5)" }}>
+              <MapPin size={14} style={{ color: "rgba(var(--fg-rgb),0.25)", flexShrink: 0 }} />
               <span>{pedido.endereco}</span>
             </div>
             {distancia != null && (
-              <div className="flex items-center gap-2 text-[13px]" style={{ color: "rgba(255,255,255,0.5)" }}>
-                <Navigation size={14} style={{ color: "rgba(255,255,255,0.25)", flexShrink: 0 }} />
+              <div className="flex items-center gap-2 text-[13px]" style={{ color: "rgba(var(--fg-rgb),0.5)" }}>
+                <Navigation size={14} style={{ color: "rgba(var(--fg-rgb),0.25)", flexShrink: 0 }} />
                 <span>{distancia.toFixed(1)} km de distância</span>
               </div>
             )}
           </div>
         </div>
 
-        <div className="rounded-2xl p-4 mb-3" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
+        <div className="rounded-2xl p-4 mb-3" style={{ background: "var(--surface-card)", border: "1px solid var(--surface-border)" }}>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-wide mb-0.5" style={{ color: "rgba(255,255,255,0.4)" }}>Cliente</p>
-              <p className="text-white text-[15px] font-semibold">{pedido.nome_cliente}</p>
-              <p className="text-[13px]" style={{ color: "rgba(255,255,255,0.5)" }}>{pedido.telefone}</p>
+              <p className="text-[11px] font-semibold uppercase tracking-wide mb-0.5" style={{ color: "rgba(var(--fg-rgb),0.4)" }}>Cliente</p>
+              <p className="text-[rgb(var(--fg-rgb))] text-[15px] font-semibold" style={{ lineHeight: 1.5 }}>{pedido.nome_cliente}</p>
+              <p className="text-[13px]" style={{ color: "rgba(var(--fg-rgb),0.5)" }}>{pedido.telefone}</p>
             </div>
             {pedido.telefone && (
               <a href={`tel:${pedido.telefone}`}
                 className="w-11 h-11 rounded-2xl flex items-center justify-center transition-transform active:scale-90"
                 style={{ background: "rgba(22,163,74,0.15)", border: "1px solid rgba(22,163,74,0.3)" }}>
-                <Phone size={18} style={{ color: "#4ade80" }} />
+                <Phone size={18} style={{ color: "var(--accent-green)" }} />
               </a>
             )}
           </div>
@@ -606,18 +605,18 @@ function TelaDetalhePedido({ pedidoId, aoVoltar, aoCheckin, minhaLocalizacao }) 
 
         {pedido.status === "concluido" ? (
           <div className="rounded-2xl p-4" style={{ background: "rgba(22,163,74,0.08)", border: "1px solid rgba(22,163,74,0.22)" }}>
-            <p className="text-[11px] font-semibold uppercase tracking-wide mb-1" style={{ color: "rgba(74,222,128,0.65)" }}>Você recebeu</p>
-            <p className="text-[#4ade80] text-2xl font-bold">{R(pedido.valor_profissional)}</p>
+            <p className="text-[11px] font-semibold uppercase tracking-wide mb-1" style={{ color: "rgba(var(--accent-green-rgb),0.65)" }}>Você recebeu</p>
+            <p className="text-[var(--accent-green)] text-2xl font-bold">{R(pedido.valor_profissional)}</p>
           </div>
         ) : (
-          <div className="rounded-2xl p-4" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
-            <p className="text-[11px] font-semibold uppercase tracking-wide mb-1" style={{ color: "rgba(255,255,255,0.4)" }}>Pagamento</p>
-            <p className="text-[13px]" style={{ color: "rgba(255,255,255,0.5)" }}>Calculado automaticamente após o check-out, com base no tempo trabalhado.</p>
+          <div className="rounded-2xl p-4" style={{ background: "var(--surface-card)", border: "1px solid var(--surface-border)" }}>
+            <p className="text-[11px] font-semibold uppercase tracking-wide mb-1" style={{ color: "rgba(var(--fg-rgb),0.4)" }}>Pagamento</p>
+            <p className="text-[13px]" style={{ color: "rgba(var(--fg-rgb),0.5)" }}>Calculado automaticamente após o check-out, com base no tempo trabalhado.</p>
           </div>
         )}
 
         {erro && (
-          <div className="mt-3 flex items-center gap-2 text-red-400 text-[13px]">
+          <div className="mt-3 flex items-center gap-2 text-[var(--accent-red)] text-[13px]">
             <AlertCircle size={14} /><span>{erro}</span>
           </div>
         )}
@@ -628,7 +627,7 @@ function TelaDetalhePedido({ pedidoId, aoVoltar, aoCheckin, minhaLocalizacao }) 
           <button
             onClick={() => window.open(`https://www.google.com/maps/dir/?api=1&destination=${pedido.latitude},${pedido.longitude}`, "_blank")}
             className="flex items-center justify-center gap-2 rounded-2xl py-3.5 text-[14px] font-semibold transition-transform active:scale-[0.97]"
-            style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.8)" }}>
+            style={{ background: "var(--surface-card)", border: "1px solid rgba(var(--fg-rgb),0.1)", color: "rgba(var(--fg-rgb),0.8)" }}>
             <Navigation size={15} /> Abrir no Google Maps
           </button>
         )}
@@ -640,23 +639,23 @@ function TelaDetalhePedido({ pedidoId, aoVoltar, aoCheckin, minhaLocalizacao }) 
           </button>
         )}
         {pedido.status === "pendente" && mostrarSeletorDuracao && (
-          <div className="rounded-2xl p-4" style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}>
-            <p className="text-white text-[14px] font-semibold mb-1">Quanto tempo vai durar?</p>
-            <p className="text-[12px] mb-3" style={{ color: "rgba(255,255,255,0.45)" }}>
+          <div className="rounded-2xl p-4" style={{ background: "var(--surface-card)", border: "1px solid rgba(var(--fg-rgb),0.1)" }}>
+            <p className="text-[rgb(var(--fg-rgb))] text-[14px] font-semibold mb-1">Quanto tempo vai durar?</p>
+            <p className="text-[12px] mb-3" style={{ color: "rgba(var(--fg-rgb),0.45)" }}>
               Obrigatório — define até quando você fica indisponível para outros pedidos.
             </p>
             <div className="mb-3">
               <SeletorDuracaoRelogio valorMinutos={duracaoEscolhidaMinutos} aoMudar={setDuracaoEscolhidaMinutos} />
             </div>
             {erro && (
-              <div className="mb-3 flex items-center gap-2 text-red-400 text-[13px]">
+              <div className="mb-3 flex items-center gap-2 text-[var(--accent-red)] text-[13px]">
                 <AlertCircle size={14} /><span>{erro}</span>
               </div>
             )}
             <div className="flex gap-2">
               <button onClick={() => setMostrarSeletorDuracao(false)}
                 className="flex-1 py-3 rounded-xl text-[14px] font-semibold"
-                style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.6)" }}>
+                style={{ background: "var(--surface-card)", color: "rgba(var(--fg-rgb),0.6)" }}>
                 Cancelar
               </button>
               <button onClick={lidarComAceitar} disabled={aceitando}
@@ -670,7 +669,7 @@ function TelaDetalhePedido({ pedidoId, aoVoltar, aoCheckin, minhaLocalizacao }) 
         {pedido.status === "aceite" && (
           <button onClick={() => aoCheckin(pedido)}
             className="flex items-center justify-center gap-2 rounded-2xl py-4 font-bold text-[15px] transition-transform active:scale-[0.97]"
-            style={{ background: "#2563eb", color: "white" }}>
+            style={{ background: "#2563eb", color: "#ffffff" }}>
             <MapPin size={16} /> Fazer Check-in
           </button>
         )}
@@ -746,26 +745,26 @@ function TelaCheckin({ pedido, aoVoltar, aoConfirmar }) {
   }
 
   return (
-    <div className="flex flex-col h-full" style={{ background: "#030213" }}>
+    <div className="flex flex-col h-full" style={{ background: "var(--bg)" }}>
       <div className="flex items-center gap-3 px-5 pt-4 pb-3">
         <button onClick={aoVoltar}
           className="w-9 h-9 rounded-xl flex items-center justify-center transition-transform active:scale-90"
-          style={{ background: "rgba(255,255,255,0.08)" }}>
-          <ArrowLeft size={18} className="text-white" />
+          style={{ background: "var(--surface-card)" }}>
+          <ArrowLeft size={18} className="text-[rgb(var(--fg-rgb))]" />
         </button>
-        <h2 className="text-white font-bold text-[17px]">Check-in</h2>
+        <h2 className="text-[rgb(var(--fg-rgb))] font-bold text-[17px]">Check-in</h2>
       </div>
 
       {!duracaoDefinida ? (
         <div className="flex-1 flex flex-col px-5 pt-4">
-          <div className="rounded-2xl p-5" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
-            <p className="text-white font-semibold text-[15px] mb-1">Antes de fazer check-in...</p>
-            <p className="text-[13px] mb-4" style={{ color: "rgba(255,255,255,0.5)" }}>
+          <div className="rounded-2xl p-5" style={{ background: "var(--surface-card)", border: "1px solid var(--surface-border)" }}>
+            <p className="text-[rgb(var(--fg-rgb))] font-semibold text-[15px] mb-1">Antes de fazer check-in...</p>
+            <p className="text-[13px] mb-4" style={{ color: "rgba(var(--fg-rgb),0.5)" }}>
               Defina quanto tempo o serviço deve durar. Isso é obrigatório para o sistema saber quando você fica disponível de novo.
             </p>
             <SeletorDuracaoRelogio valorMinutos={novaDuracao} aoMudar={setNovaDuracao} />
             {erroDuracao && (
-              <div className="mt-3 flex items-center gap-2 text-red-400 text-[13px]">
+              <div className="mt-3 flex items-center gap-2 text-[var(--accent-red)] text-[13px]">
                 <AlertCircle size={14} /><span>{erroDuracao}</span>
               </div>
             )}
@@ -783,54 +782,54 @@ function TelaCheckin({ pedido, aoVoltar, aoConfirmar }) {
           <div className="relative w-44 h-44 flex items-center justify-center mb-6">
             {dentroRaio ? (
               <>
-                <div className="absolute inset-0 rounded-full animate-ping" style={{ border: "2px solid rgba(74,222,128,0.25)" }} />
-                <div className="absolute inset-6 rounded-full" style={{ border: "1px solid rgba(74,222,128,0.15)" }} />
+                <div className="absolute inset-0 rounded-full animate-ping" style={{ border: "2px solid rgba(var(--accent-green-rgb),0.25)" }} />
+                <div className="absolute inset-6 rounded-full" style={{ border: "1px solid rgba(var(--accent-green-rgb),0.15)" }} />
                 <div className="w-24 h-24 rounded-full flex items-center justify-center"
                   style={{ background: "rgba(22,163,74,0.1)", border: "2px solid rgba(22,163,74,0.4)" }}>
-                  <MapPin size={32} style={{ color: "#4ade80" }} />
+                  <MapPin size={32} style={{ color: "var(--accent-green)" }} />
                 </div>
               </>
             ) : (
               <>
-                <div className="absolute inset-0 rounded-full" style={{ border: "1px solid rgba(255,255,255,0.08)" }} />
-                <div className="absolute inset-6 rounded-full" style={{ border: "1px solid rgba(255,255,255,0.05)" }} />
+                <div className="absolute inset-0 rounded-full" style={{ border: "1px solid var(--surface-border)" }} />
+                <div className="absolute inset-6 rounded-full" style={{ border: "1px solid var(--surface-border)" }} />
                 <div className="w-24 h-24 rounded-full flex items-center justify-center"
-                  style={{ background: "rgba(255,255,255,0.04)", border: "2px solid rgba(255,255,255,0.12)" }}>
-                  <MapPin size={32} style={{ color: "rgba(255,255,255,0.3)" }} />
+                  style={{ background: "var(--surface-card)", border: "2px solid rgba(var(--fg-rgb),0.12)" }}>
+                  <MapPin size={32} style={{ color: "rgba(var(--fg-rgb),0.3)" }} />
                 </div>
               </>
             )}
           </div>
 
           {erroLocalizacao ? (
-            <p className="text-[13px] text-center px-6 text-red-400">{erroLocalizacao}</p>
+            <p className="text-[13px] text-center px-6 text-[var(--accent-red)]">{erroLocalizacao}</p>
           ) : posicaoAtual == null ? (
-            <p className="text-[13px]" style={{ color: "rgba(255,255,255,0.4)" }}>A obter a sua localização...</p>
+            <p className="text-[13px]" style={{ color: "rgba(var(--fg-rgb),0.4)" }}>A obter a sua localização...</p>
           ) : dentroRaio ? (
             <>
-              <p className="font-bold text-[18px] mb-1" style={{ color: "#4ade80" }}>Você está no local!</p>
-              <p className="text-[13px]" style={{ color: "rgba(255,255,255,0.4)" }}>{Math.round(distanciaMetros)}m do endereço do serviço</p>
+              <p className="font-bold text-[18px] mb-1" style={{ color: "var(--accent-green)" }}>Você está no local!</p>
+              <p className="text-[13px]" style={{ color: "rgba(var(--fg-rgb),0.4)" }}>{Math.round(distanciaMetros)}m do endereço do serviço</p>
             </>
           ) : (
             <>
-              <p className="text-white font-bold text-[18px] mb-1">Aproxime-se do local</p>
-              <p className="text-[13px] text-center px-6" style={{ color: "rgba(255,255,255,0.4)" }}>
+              <p className="text-[rgb(var(--fg-rgb))] font-bold text-[18px] mb-1">Aproxime-se do local</p>
+              <p className="text-[13px] text-center px-6" style={{ color: "rgba(var(--fg-rgb),0.4)" }}>
                 Você está a {Math.round(distanciaMetros)}m. O check-in fica disponível a {RAIO}m ou menos.
               </p>
             </>
           )}
         </div>
 
-        <div className="rounded-2xl p-4" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
-          <p className="text-white font-semibold text-[15px] mb-1">{pedido.nome_cliente}</p>
-          <p className="flex items-center gap-1 text-[13px]" style={{ color: "rgba(255,255,255,0.5)" }}>
+        <div className="rounded-2xl p-4" style={{ background: "var(--surface-card)", border: "1px solid var(--surface-border)" }}>
+          <p className="text-[rgb(var(--fg-rgb))] font-semibold text-[15px] mb-1" style={{ lineHeight: 1.5 }}>{pedido.nome_cliente}</p>
+          <p className="flex items-center gap-1 text-[13px]" style={{ color: "rgba(var(--fg-rgb),0.5)" }}>
             <MapPin size={12} />{pedido.endereco}
           </p>
-          <p className="text-[12px] mt-1" style={{ color: "rgba(255,255,255,0.35)" }}>{pedido.nome_categoria} · {(pedido.hora || "").slice(0, 5)}</p>
+          <p className="text-[12px] mt-1" style={{ color: "rgba(var(--fg-rgb),0.35)" }}>{pedido.nome_categoria} · {(pedido.hora || "").slice(0, 5)}</p>
         </div>
 
         {erro && (
-          <div className="mt-3 flex items-center gap-2 text-red-400 text-[13px]">
+          <div className="mt-3 flex items-center gap-2 text-[var(--accent-red)] text-[13px]">
             <AlertCircle size={14} /><span>{erro}</span>
           </div>
         )}
@@ -840,9 +839,9 @@ function TelaCheckin({ pedido, aoVoltar, aoConfirmar }) {
         <button onClick={confirmar} disabled={!dentroRaio || confirmando}
           className="w-full flex items-center justify-center gap-2 rounded-2xl py-4 font-bold text-[15px] transition-transform active:scale-[0.97]"
           style={{
-            background: dentroRaio ? "#16a34a" : "rgba(255,255,255,0.05)",
-            color: dentroRaio ? "white" : "rgba(255,255,255,0.2)",
-            border: dentroRaio ? "none" : "1px solid rgba(255,255,255,0.08)",
+            background: dentroRaio ? "#16a34a" : "rgba(var(--fg-rgb),0.05)",
+            color: dentroRaio ? "white" : "rgba(var(--fg-rgb),0.2)",
+            border: dentroRaio ? "none" : "1px solid rgba(var(--fg-rgb),0.08)",
           }}>
           {confirmando ? <Loader2 size={18} className="animate-spin" /> : <CheckCircle size={18} />}
           {confirmando ? "A confirmar..." : dentroRaio ? "Confirmar Check-in" : "Aguardando localização..."}
@@ -964,60 +963,60 @@ function TelaEmAndamento({ pedido, checkinHoraISO, aoCheckout }) {
   }
 
   return (
-    <div className="flex flex-col h-full" style={{ background: "#030213", position: "relative" }}>
+    <div className="flex flex-col h-full" style={{ background: "var(--bg)", position: "relative" }}>
       <div className="px-5 pt-5 pb-2">
         <div className="flex items-center gap-2 mb-2">
-          <div className="w-2 h-2 rounded-full animate-pulse" style={{ background: "#60a5fa" }} />
-          <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: "#60a5fa" }}>Serviço em execução</p>
+          <div className="w-2 h-2 rounded-full animate-pulse" style={{ background: "var(--accent-blue)" }} />
+          <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: "var(--accent-blue)" }}>Serviço em execução</p>
         </div>
-        <h2 className="text-white text-[22px] font-bold">{pedido.nome_cliente}</h2>
-        <p className="text-[14px]" style={{ color: "rgba(255,255,255,0.5)" }}>{pedido.nome_categoria}</p>
+        <h2 className="text-[rgb(var(--fg-rgb))] text-[22px] font-bold" style={{ lineHeight: 1.5 }}>{pedido.nome_cliente}</h2>
+        <p className="text-[14px]" style={{ color: "rgba(var(--fg-rgb),0.5)" }}>{pedido.nome_categoria}</p>
       </div>
 
       <div className="flex-1 flex flex-col px-5 pb-5">
         <div className="flex flex-col items-center py-8">
-          <p className="text-[11px] font-semibold uppercase tracking-widest mb-3" style={{ color: "rgba(255,255,255,0.3)" }}>
+          <p className="text-[11px] font-semibold uppercase tracking-widest mb-3" style={{ color: "rgba(var(--fg-rgb),0.3)" }}>
             Tempo decorrido
           </p>
-          <p className="text-white font-bold tracking-widest tabular-nums" style={{ fontSize: 48, fontFamily: "monospace" }}>
+          <p className="text-[rgb(var(--fg-rgb))] font-bold tracking-widest tabular-nums" style={{ fontSize: 48, fontFamily: "monospace" }}>
             {formatarCronometro(segundos)}
           </p>
-          <p className="text-[13px] mt-3" style={{ color: "rgba(255,255,255,0.4)" }}>Check-in às {formatarHora(checkinHoraISO)}</p>
+          <p className="text-[13px] mt-3" style={{ color: "rgba(var(--fg-rgb),0.4)" }}>Check-in às {formatarHora(checkinHoraISO)}</p>
         </div>
 
-        <div className="rounded-2xl p-4 mb-4" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
-          <div className="flex items-center gap-2 text-[13px]" style={{ color: "rgba(255,255,255,0.5)" }}>
-            <MapPin size={13} style={{ color: "rgba(255,255,255,0.3)", flexShrink: 0 }} />
+        <div className="rounded-2xl p-4 mb-4" style={{ background: "var(--surface-card)", border: "1px solid var(--surface-border)" }}>
+          <div className="flex items-center gap-2 text-[13px]" style={{ color: "rgba(var(--fg-rgb),0.5)" }}>
+            <MapPin size={13} style={{ color: "rgba(var(--fg-rgb),0.3)", flexShrink: 0 }} />
             {pedido.endereco}
           </div>
         </div>
 
-        <div className="rounded-2xl p-4 mb-4" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
+        <div className="rounded-2xl p-4 mb-4" style={{ background: "var(--surface-card)", border: "1px solid var(--surface-border)" }}>
           {!ajustandoDuracao ? (
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-wide mb-0.5" style={{ color: "rgba(255,255,255,0.4)" }}>Duração estimada</p>
-                <p className="text-white text-[15px] font-semibold">
+                <p className="text-[11px] font-semibold uppercase tracking-wide mb-0.5" style={{ color: "rgba(var(--fg-rgb),0.4)" }}>Duração estimada</p>
+                <p className="text-[rgb(var(--fg-rgb))] text-[15px] font-semibold">
                   {duracaoAtual ? (duracaoAtual >= 60 ? `${Math.floor(duracaoAtual / 60)}h ${duracaoAtual % 60 || ""}`.trim() : `${duracaoAtual}min`) : "Não definida"}
                 </p>
               </div>
               <button onClick={() => setAjustandoDuracao(true)}
                 className="text-[12px] font-semibold px-3 py-2 rounded-lg"
-                style={{ background: "rgba(37,99,235,0.15)", color: "#60a5fa" }}>
+                style={{ background: "rgba(37,99,235,0.15)", color: "var(--accent-blue)" }}>
                 Ajustar
               </button>
             </div>
           ) : (
             <div>
-              <p className="text-white text-[13px] font-semibold mb-2">Ajustar duração estimada</p>
-              <p className="text-[11px] mb-3" style={{ color: "rgba(255,255,255,0.4)" }}>Use se surgiu um imprevisto — só é possível aumentar a duração.</p>
+              <p className="text-[rgb(var(--fg-rgb))] text-[13px] font-semibold mb-2">Ajustar duração estimada</p>
+              <p className="text-[11px] mb-3" style={{ color: "rgba(var(--fg-rgb),0.4)" }}>Use se surgiu um imprevisto — só é possível aumentar a duração.</p>
               <div className="mb-3">
                 <SeletorDuracaoRelogio valorMinutos={novaDuracaoMinutos} aoMudar={setNovaDuracaoMinutos} minimoMinutos={duracaoAtual} />
               </div>
               <div className="flex gap-2">
                 <button onClick={() => setAjustandoDuracao(false)}
                   className="flex-1 py-2.5 rounded-lg text-[13px] font-semibold"
-                  style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.6)" }}>
+                  style={{ background: "var(--surface-card)", color: "rgba(var(--fg-rgb),0.6)" }}>
                   Cancelar
                 </button>
                 <button onClick={lidarComSalvarDuracao} disabled={salvandoDuracao}
@@ -1031,7 +1030,7 @@ function TelaEmAndamento({ pedido, checkinHoraISO, aoCheckout }) {
         </div>
 
         {erro && (
-          <div className="mb-3 flex items-center gap-2 text-red-400 text-[13px]">
+          <div className="mb-3 flex items-center gap-2 text-[var(--accent-red)] text-[13px]">
             <AlertCircle size={14} /><span>{erro}</span>
           </div>
         )}
@@ -1039,7 +1038,7 @@ function TelaEmAndamento({ pedido, checkinHoraISO, aoCheckout }) {
         <div className="mt-auto">
           <button onClick={lidarComCheckout} disabled={saindo}
             className="w-full flex items-center justify-center gap-2 rounded-2xl py-4 font-bold text-[15px] transition-transform active:scale-[0.97] disabled:opacity-60"
-            style={{ background: "#d4183d", color: "white" }}>
+            style={{ background: "#d4183d", color: "#ffffff" }}>
             {saindo ? <Loader2 size={18} className="animate-spin" /> : <CheckCircle size={18} />}
             {saindo ? "A finalizar..." : "Fazer Check-out"}
           </button>
@@ -1050,20 +1049,20 @@ function TelaEmAndamento({ pedido, checkinHoraISO, aoCheckout }) {
           uma nova duração (ou ao fazer check-out, que troca de ecrã) */}
       {alertaVisivel && (
         <div className="absolute inset-0 flex items-end justify-center p-5" style={{ background: "rgba(3,2,19,0.85)", zIndex: 30 }}>
-          <div className="w-full rounded-3xl p-5" style={{ background: "#0b0d1a", border: "1px solid rgba(248,113,113,0.35)" }}>
+          <div className="w-full rounded-3xl p-5" style={{ background: "var(--bg)", border: "1px solid rgba(var(--accent-red-rgb),0.35)" }}>
             <div className="flex items-center gap-2 mb-2">
-              <div className="w-2.5 h-2.5 rounded-full animate-pulse" style={{ background: "#f87171" }} />
-              <p className="text-[12px] font-bold uppercase tracking-widest" style={{ color: "#f87171" }}>Tempo quase a acabar</p>
+              <div className="w-2.5 h-2.5 rounded-full animate-pulse" style={{ background: "var(--accent-red)" }} />
+              <p className="text-[12px] font-bold uppercase tracking-widest" style={{ color: "var(--accent-red)" }}>Tempo quase a acabar</p>
             </div>
-            <p className="text-white font-bold text-[17px] mb-1">
+            <p className="text-[rgb(var(--fg-rgb))] font-bold text-[17px] mb-1">
               {tempoRestanteMinutos > 0 ? `Faltam ${tempoRestanteMinutos} min para o fim estimado` : "O tempo estimado já terminou"}
             </p>
-            <p className="text-[13px] mb-4" style={{ color: "rgba(255,255,255,0.5)" }}>
+            <p className="text-[13px] mb-4" style={{ color: "rgba(var(--fg-rgb),0.5)" }}>
               Ainda não fez check-out. Quanto tempo falta, de verdade, para terminar o serviço?
             </p>
             <SeletorDuracaoRelogio valorMinutos={novaDuracaoAlerta} aoMudar={setNovaDuracaoAlerta} minimoMinutos={duracaoAtual} />
             {erroAlerta && (
-              <div className="mt-3 flex items-center gap-2 text-red-400 text-[13px]">
+              <div className="mt-3 flex items-center gap-2 text-[var(--accent-red)] text-[13px]">
                 <AlertCircle size={14} /><span>{erroAlerta}</span>
               </div>
             )}
@@ -1090,42 +1089,42 @@ function TelaResumo({ pedido, checkinHoraISO, resultadoCheckout, aoVoltar }) {
   })();
 
   return (
-    <div className="flex flex-col h-full px-5 pb-5 overflow-y-auto" style={{ background: "#030213" }}>
+    <div className="flex flex-col h-full px-5 pb-5 overflow-y-auto" style={{ background: "var(--bg)" }}>
       <div className="pt-10 flex flex-col items-center mb-8">
         <div className="w-16 h-16 rounded-full flex items-center justify-center mb-4"
           style={{ background: "rgba(22,163,74,0.15)", border: "1px solid rgba(22,163,74,0.3)" }}>
-          <CheckCircle size={32} style={{ color: "#4ade80" }} />
+          <CheckCircle size={32} style={{ color: "var(--accent-green)" }} />
         </div>
-        <h2 className="text-white text-[22px] font-bold mb-1">Serviço concluído!</h2>
-        <p className="text-[14px]" style={{ color: "rgba(255,255,255,0.4)" }}>Ótimo trabalho</p>
+        <h2 className="text-[rgb(var(--fg-rgb))] text-[22px] font-bold mb-1">Serviço concluído!</h2>
+        <p className="text-[14px]" style={{ color: "rgba(var(--fg-rgb),0.4)" }}>Ótimo trabalho</p>
       </div>
 
-      <div className="rounded-2xl overflow-hidden mb-4" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
-        <div className="p-4 pb-3" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-          <p className="text-[11px] font-semibold uppercase tracking-wide mb-0.5" style={{ color: "rgba(255,255,255,0.4)" }}>Serviço</p>
-          <p className="text-white font-semibold text-[15px]">{pedido.nome_cliente} · {pedido.nome_categoria}</p>
-          <p className="text-[13px]" style={{ color: "rgba(255,255,255,0.5)" }}>{formatarData(pedido.data)}</p>
+      <div className="rounded-2xl overflow-hidden mb-4" style={{ background: "var(--surface-card)", border: "1px solid var(--surface-border)" }}>
+        <div className="p-4 pb-3" style={{ borderBottom: "1px solid rgba(var(--fg-rgb),0.06)" }}>
+          <p className="text-[11px] font-semibold uppercase tracking-wide mb-0.5" style={{ color: "rgba(var(--fg-rgb),0.4)" }}>Serviço</p>
+          <p className="text-[rgb(var(--fg-rgb))] font-semibold text-[15px]" style={{ lineHeight: 1.5 }}>{pedido.nome_cliente} · {pedido.nome_categoria}</p>
+          <p className="text-[13px]" style={{ color: "rgba(var(--fg-rgb),0.5)" }}>{formatarData(pedido.data)}</p>
         </div>
-        <div className="grid grid-cols-2" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+        <div className="grid grid-cols-2" style={{ borderBottom: "1px solid rgba(var(--fg-rgb),0.06)" }}>
           {[["Chegada", formatarHora(checkinHoraISO)], ["Saída", formatarHora(new Date())]].map(([label, val]) => (
-            <div key={label} className="p-4" style={{ borderRight: "1px solid rgba(255,255,255,0.06)" }}>
-              <p className="text-[11px] font-semibold uppercase tracking-wide mb-1" style={{ color: "rgba(255,255,255,0.4)" }}>{label}</p>
-              <p className="text-white text-[17px] font-semibold" style={{ fontFamily: "monospace" }}>{val}</p>
+            <div key={label} className="p-4" style={{ borderRight: "1px solid rgba(var(--fg-rgb),0.06)" }}>
+              <p className="text-[11px] font-semibold uppercase tracking-wide mb-1" style={{ color: "rgba(var(--fg-rgb),0.4)" }}>{label}</p>
+              <p className="text-[rgb(var(--fg-rgb))] text-[17px] font-semibold" style={{ fontFamily: "monospace" }}>{val}</p>
             </div>
           ))}
         </div>
         <div className="p-4">
-          <p className="text-[11px] font-semibold uppercase tracking-wide mb-1" style={{ color: "rgba(255,255,255,0.4)" }}>Duração total</p>
-          <p className="text-white text-[16px] font-semibold">{duracaoTexto}</p>
+          <p className="text-[11px] font-semibold uppercase tracking-wide mb-1" style={{ color: "rgba(var(--fg-rgb),0.4)" }}>Duração total</p>
+          <p className="text-[rgb(var(--fg-rgb))] text-[16px] font-semibold">{duracaoTexto}</p>
         </div>
       </div>
 
       <div className="rounded-2xl p-5 mb-5" style={{ background: "rgba(22,163,74,0.08)", border: "1px solid rgba(22,163,74,0.25)" }}>
-        <p className="text-[11px] font-semibold uppercase tracking-wide mb-2" style={{ color: "rgba(74,222,128,0.65)" }}>Você vai receber</p>
-        <p className="font-bold mb-1" style={{ color: "#4ade80", fontSize: 38 }}>{R(resultadoCheckout?.valor_profissional)}</p>
+        <p className="text-[11px] font-semibold uppercase tracking-wide mb-2" style={{ color: "rgba(var(--accent-green-rgb),0.65)" }}>Você vai receber</p>
+        <p className="font-bold mb-1" style={{ color: "var(--accent-green)", fontSize: 38 }}>{R(resultadoCheckout?.valor_profissional)}</p>
         <div className="flex items-center gap-1.5 mt-1">
           <div className="w-1.5 h-1.5 rounded-full" style={{ background: "#f59e0b" }} />
-          <p className="text-[12px] font-medium" style={{ color: "rgba(251,191,36,0.7)" }}>Pagamento pendente</p>
+          <p className="text-[12px] font-medium" style={{ color: "rgba(var(--accent-amber-rgb),0.7)" }}>Pagamento pendente</p>
         </div>
       </div>
 
@@ -1164,10 +1163,10 @@ function TelaMapa({ aoAbrirPedido }) {
   useEffect(() => { carregar(); }, []);
 
   return (
-    <div className="flex flex-col h-full" style={{ background: "#030213" }}>
+    <div className="flex flex-col h-full" style={{ background: "var(--bg)" }}>
       <div className="px-5 pt-5 pb-3">
-        <h2 className="text-white font-bold text-[22px]">Mapa</h2>
-        <p className="text-[13px]" style={{ color: "rgba(255,255,255,0.4)" }}>Pedidos próximos a você</p>
+        <h2 className="text-[rgb(var(--fg-rgb))] font-bold text-[22px]">Mapa</h2>
+        <p className="text-[13px]" style={{ color: "rgba(var(--fg-rgb),0.4)" }}>Pedidos próximos a você</p>
       </div>
 
       <div className="mx-4 rounded-2xl overflow-hidden mb-3 flex-shrink-0" style={{ height: 220 }}>
@@ -1175,28 +1174,28 @@ function TelaMapa({ aoAbrirPedido }) {
       </div>
 
       <div className="flex-1 overflow-y-auto px-5 pb-4">
-        <p className="text-[11px] font-semibold uppercase tracking-widest mb-3" style={{ color: "rgba(255,255,255,0.3)" }}>
+        <p className="text-[11px] font-semibold uppercase tracking-widest mb-3" style={{ color: "rgba(var(--fg-rgb),0.3)" }}>
           Pedidos próximos
         </p>
         {estado === "carregando" ? (
-          <Loader2 size={22} className="animate-spin text-white/30 mx-auto mt-6" />
+          <Loader2 size={22} className="animate-spin text-[rgb(var(--fg-rgb))]/30 mx-auto mt-6" />
         ) : pedidos.length === 0 ? (
-          <p className="text-[13px] text-center mt-6" style={{ color: "rgba(255,255,255,0.3)" }}>Nenhum pedido para mostrar</p>
+          <p className="text-[13px] text-center mt-6" style={{ color: "rgba(var(--fg-rgb),0.3)" }}>Nenhum pedido para mostrar</p>
         ) : (
           pedidos.map(p => (
             <button key={p.id} onClick={() => aoAbrirPedido(p)}
               className="w-full text-left flex items-center gap-3 p-3 rounded-2xl mb-2 transition-transform active:scale-[0.97]"
-              style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
+              style={{ background: "var(--surface-card)", border: "1px solid var(--surface-border)" }}>
               <div className="w-9 h-9 rounded-xl flex items-center justify-center text-base flex-shrink-0"
-                style={{ background: "rgba(255,255,255,0.08)" }}>
+                style={{ background: "var(--surface-card)" }}>
                 {EMOJI_CATEGORIA[p.categoria_id] || "🧰"}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-white text-[14px] font-semibold truncate">{p.nome_cliente}</p>
-                <p className="text-[12px] truncate" style={{ color: "rgba(255,255,255,0.4)" }}>{p.endereco}</p>
+                <p className="text-[rgb(var(--fg-rgb))] text-[14px] font-semibold truncate" style={{ lineHeight: 1.5 }}>{p.nome_cliente}</p>
+                <p className="text-[12px] truncate" style={{ color: "rgba(var(--fg-rgb),0.4)" }}>{p.endereco}</p>
               </div>
               <div className="text-right flex-shrink-0 flex flex-col items-end gap-1">
-                {p.distancia_km != null && <span className="text-[12px]" style={{ color: "rgba(255,255,255,0.45)" }}>{Number(p.distancia_km).toFixed(1)} km</span>}
+                {p.distancia_km != null && <span className="text-[12px]" style={{ color: "rgba(var(--fg-rgb),0.45)" }}>{Number(p.distancia_km).toFixed(1)} km</span>}
                 <Badge status={p.status} />
               </div>
             </button>
@@ -1229,15 +1228,15 @@ function TelaHistorico() {
   useEffect(() => { carregar(); }, [filtro]);
 
   return (
-    <div className="flex flex-col h-full" style={{ background: "#030213" }}>
+    <div className="flex flex-col h-full" style={{ background: "var(--bg)" }}>
       <div className="px-5 pt-5 pb-3">
-        <h2 className="text-white font-bold text-[22px]">Histórico</h2>
+        <h2 className="text-[rgb(var(--fg-rgb))] font-bold text-[22px]">Histórico</h2>
       </div>
 
       <div className="mx-5 rounded-2xl p-4 mb-4" style={{ background: "rgba(22,163,74,0.08)", border: "1px solid rgba(22,163,74,0.2)" }}>
-        <p className="text-[11px] font-semibold uppercase tracking-wide mb-1" style={{ color: "rgba(74,222,128,0.65)" }}>Total recebido</p>
-        <p className="font-bold" style={{ color: "#4ade80", fontSize: 32 }}>{R(historico.totalRecebido)}</p>
-        <p className="text-[12px] mt-1" style={{ color: "rgba(74,222,128,0.5)" }}>
+        <p className="text-[11px] font-semibold uppercase tracking-wide mb-1" style={{ color: "rgba(var(--accent-green-rgb),0.65)" }}>Total recebido</p>
+        <p className="font-bold" style={{ color: "var(--accent-green)", fontSize: 32 }}>{R(historico.totalRecebido)}</p>
+        <p className="text-[12px] mt-1" style={{ color: "rgba(var(--accent-green-rgb),0.5)" }}>
           {historico.pedidos.filter(h => h.status_pagamento === "pago").length} serviços pagos
         </p>
       </div>
@@ -1247,8 +1246,8 @@ function TelaHistorico() {
           <button key={f.v} onClick={() => setFiltro(f.v)}
             className="px-4 py-1.5 rounded-xl text-[13px] font-semibold transition-all"
             style={{
-              background: filtro === f.v ? "white" : "rgba(255,255,255,0.06)",
-              color: filtro === f.v ? "#030213" : "rgba(255,255,255,0.4)",
+              background: filtro === f.v ? "white" : "rgba(var(--fg-rgb),0.06)",
+              color: filtro === f.v ? "#030213" : "rgba(var(--fg-rgb),0.4)",
             }}>
             {f.l}
           </button>
@@ -1257,29 +1256,29 @@ function TelaHistorico() {
 
       <div className="flex-1 overflow-y-auto px-5 pb-4">
         {estado === "carregando" ? (
-          <Loader2 size={22} className="animate-spin text-white/30 mx-auto mt-6" />
+          <Loader2 size={22} className="animate-spin text-[rgb(var(--fg-rgb))]/30 mx-auto mt-6" />
         ) : historico.pedidos.length === 0 ? (
-          <p className="text-[13px] text-center mt-6" style={{ color: "rgba(255,255,255,0.3)" }}>Nenhum serviço concluído neste período</p>
+          <p className="text-[13px] text-center mt-6" style={{ color: "rgba(var(--fg-rgb),0.3)" }}>Nenhum serviço concluído neste período</p>
         ) : (
           historico.pedidos.map(h => {
             const duracaoTxt = h.duracao_minutos != null
               ? (h.duracao_minutos >= 60 ? `${Math.floor(h.duracao_minutos / 60)}h ${h.duracao_minutos % 60}min` : `${h.duracao_minutos}min`)
               : "—";
             return (
-              <div key={h.id} className="rounded-2xl p-4 mb-3" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
+              <div key={h.id} className="rounded-2xl p-4 mb-3" style={{ background: "var(--surface-card)", border: "1px solid var(--surface-border)" }}>
                 <div className="flex items-start justify-between mb-3">
                   <div>
-                    <p className="text-white font-semibold text-[15px]">{h.nome_cliente}</p>
-                    <p className="text-[13px]" style={{ color: "rgba(255,255,255,0.5)" }}>{h.nome_categoria} · {formatarData(h.data)}</p>
+                    <p className="text-[rgb(var(--fg-rgb))] font-semibold text-[15px]" style={{ lineHeight: 1.5 }}>{h.nome_cliente}</p>
+                    <p className="text-[13px]" style={{ color: "rgba(var(--fg-rgb),0.5)" }}>{h.nome_categoria} · {formatarData(h.data)}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-[16px] font-bold" style={{ color: h.status_pagamento === "pago" ? "#4ade80" : "rgba(255,255,255,0.5)" }}>{R(h.valor_profissional)}</p>
-                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${h.status_pagamento === "pago" ? "bg-green-500/20 text-green-400" : "bg-amber-500/20 text-amber-400"}`}>
+                    <p className="text-[16px] font-bold" style={{ color: h.status_pagamento === "pago" ? "var(--accent-green)" : "rgba(var(--fg-rgb),0.5)" }}>{R(h.valor_profissional)}</p>
+                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${h.status_pagamento === "pago" ? "bg-green-500/20 text-[var(--accent-green)]" : "bg-amber-500/20 text-[var(--accent-amber)]"}`}>
                       {h.status_pagamento === "pago" ? "Pago" : "Pendente"}
                     </span>
                   </div>
                 </div>
-                <div className="flex gap-4 text-[12px]" style={{ color: "rgba(255,255,255,0.3)" }}>
+                <div className="flex gap-4 text-[12px]" style={{ color: "rgba(var(--fg-rgb),0.3)" }}>
                   <span className="flex items-center gap-1"><Clock size={11} />{formatarHora(h.checkin_hora)} → {formatarHora(h.checkout_hora)}</span>
                   <span className="flex items-center gap-1"><Timer size={11} />{duracaoTxt}</span>
                 </div>
@@ -1294,7 +1293,7 @@ function TelaHistorico() {
 
 // ── Tela: Perfil ───────────────────────────────────────────────────────────────
 
-function TelaPerfil({ utilizador, aoSair }) {
+function TelaPerfil({ utilizador, aoSair, tema, definirTema }) {
   // valores sem acento (formato do banco); rótulo com acento só para exibição
   const dias = [
     { valor: "Domingo", rotulo: "Dom" },
@@ -1343,44 +1342,44 @@ function TelaPerfil({ utilizador, aoSair }) {
   const nome = perfil?.nome || utilizador?.nome || "";
 
   return (
-    <div className="flex flex-col h-full overflow-y-auto pb-5" style={{ background: "#030213" }}>
+    <div className="flex flex-col h-full overflow-y-auto pb-5" style={{ background: "var(--bg)" }}>
       <div className="px-5 pt-5 pb-3">
-        <h2 className="text-white font-bold text-[22px]">Perfil</h2>
+        <h2 className="text-[rgb(var(--fg-rgb))] font-bold text-[22px]">Perfil</h2>
       </div>
 
       <div className="flex flex-col items-center px-5 pb-5">
         <div className="w-20 h-20 rounded-3xl overflow-hidden flex items-center justify-center mb-3"
-          style={{ background: "linear-gradient(135deg, rgba(37,99,235,0.2), rgba(37,99,235,0.05))", border: "1px solid rgba(255,255,255,0.1)" }}>
+          style={{ background: "linear-gradient(135deg, rgba(37,99,235,0.2), rgba(37,99,235,0.05))", border: "1px solid rgba(var(--fg-rgb),0.1)" }}>
           {perfil?.foto ? (
             <img src={perfil.foto} alt={nome} className="w-full h-full object-cover" />
           ) : (
-            <User size={36} style={{ color: "rgba(255,255,255,0.6)" }} />
+            <User size={36} style={{ color: "rgba(var(--fg-rgb),0.6)" }} />
           )}
         </div>
-        <h3 className="text-white text-[20px] font-bold mb-0.5">{nome}</h3>
-        <p className="text-[14px] mb-3" style={{ color: "rgba(255,255,255,0.5)" }}>{perfil?.nome_categoria || ""}</p>
-        <div className="flex items-center gap-5 text-[13px]" style={{ color: "rgba(255,255,255,0.4)" }}>
+        <h3 className="text-[rgb(var(--fg-rgb))] text-[20px] font-bold mb-0.5">{nome}</h3>
+        <p className="text-[14px] mb-3" style={{ color: "rgba(var(--fg-rgb),0.5)" }}>{perfil?.nome_categoria || ""}</p>
+        <div className="flex items-center gap-5 text-[13px]" style={{ color: "rgba(var(--fg-rgb),0.4)" }}>
           <span className="flex items-center gap-1.5">
-            <Star size={13} style={{ color: "#fbbf24" }} />
+            <Star size={13} style={{ color: "var(--accent-amber)" }} />
             {perfil?.avaliacao || "—"}
           </span>
           <span>{perfil?.totalServicos ?? 0} serviços</span>
         </div>
       </div>
 
-      <div className="mx-5 rounded-2xl overflow-hidden mb-3" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
+      <div className="mx-5 rounded-2xl overflow-hidden mb-3" style={{ background: "var(--surface-card)", border: "1px solid var(--surface-border)" }}>
         {[["E-mail", utilizador?.email], ["Telefone", perfil?.telefone || "—"]].map(([label, val], i) => (
-          <div key={label} className="p-4" style={i > 0 ? { borderTop: "1px solid rgba(255,255,255,0.06)" } : {}}>
-            <p className="text-[11px] font-semibold uppercase tracking-wide mb-0.5" style={{ color: "rgba(255,255,255,0.4)" }}>{label}</p>
-            <p className="text-white text-[14px]">{val}</p>
+          <div key={label} className="p-4" style={i > 0 ? { borderTop: "1px solid rgba(var(--fg-rgb),0.06)" } : {}}>
+            <p className="text-[11px] font-semibold uppercase tracking-wide mb-0.5" style={{ color: "rgba(var(--fg-rgb),0.4)" }}>{label}</p>
+            <p className="text-[rgb(var(--fg-rgb))] text-[14px] break-all" style={{ lineHeight: 1.5 }}>{val}</p>
           </div>
         ))}
       </div>
 
-      <div className="mx-5 rounded-2xl p-4 mb-4" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
+      <div className="mx-5 rounded-2xl p-4 mb-4" style={{ background: "var(--surface-card)", border: "1px solid var(--surface-border)" }}>
         <div className="flex items-center justify-between mb-3">
-          <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: "rgba(255,255,255,0.4)" }}>Disponibilidade</p>
-          {salvando && <Loader2 size={12} className="animate-spin text-white/40" />}
+          <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: "rgba(var(--fg-rgb),0.4)" }}>Disponibilidade</p>
+          {salvando && <Loader2 size={12} className="animate-spin text-[rgb(var(--fg-rgb))]/40" />}
         </div>
         <div className="flex gap-2 flex-wrap">
           {dias.map((d) => {
@@ -1389,11 +1388,35 @@ function TelaPerfil({ utilizador, aoSair }) {
               <button key={d.valor} onClick={() => toggleDia(d.valor)}
                 className="w-10 h-10 rounded-xl text-[12px] font-semibold transition-all active:scale-90"
                 style={{
-                  background: ativo ? "rgba(22,163,74,0.15)" : "rgba(255,255,255,0.05)",
-                  border: `1px solid ${ativo ? "rgba(22,163,74,0.4)" : "rgba(255,255,255,0.08)"}`,
-                  color: ativo ? "#4ade80" : "rgba(255,255,255,0.3)",
+                  background: ativo ? "rgba(22,163,74,0.15)" : "rgba(var(--fg-rgb),0.05)",
+                  border: `1px solid ${ativo ? "rgba(22,163,74,0.4)" : "rgba(var(--fg-rgb),0.08)"}`,
+                  color: ativo ? "var(--accent-green)" : "rgba(var(--fg-rgb),0.3)",
                 }}>
                 {d.rotulo}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="mx-5 rounded-2xl p-4 mb-4" style={{ background: "var(--surface-card)", border: "1px solid var(--surface-border)" }}>
+        <p className="text-[11px] font-semibold uppercase tracking-wide mb-3" style={{ color: "rgba(var(--fg-rgb),0.4)" }}>Aparência</p>
+        <div className="grid grid-cols-3 gap-2">
+          {[
+            { valor: "light", rotulo: "Claro", Icone: Sun },
+            { valor: "dark", rotulo: "Escuro", Icone: Moon },
+            { valor: "device", rotulo: "Automático", Icone: Smartphone },
+          ].map(({ valor, rotulo, Icone }) => {
+            const ativo = tema === valor;
+            return (
+              <button key={valor} onClick={() => definirTema(valor)}
+                className="flex flex-col items-center gap-1.5 py-3 rounded-xl transition-transform active:scale-95"
+                style={{
+                  background: ativo ? "rgba(37,99,235,0.15)" : "rgba(var(--fg-rgb),0.05)",
+                  border: `1px solid ${ativo ? "rgba(37,99,235,0.4)" : "rgba(var(--fg-rgb),0.08)"}`,
+                }}>
+                <Icone size={18} color={ativo ? "var(--accent-blue)" : "rgba(var(--fg-rgb),0.4)"} />
+                <span className="text-[11px] font-semibold" style={{ color: ativo ? "var(--accent-blue)" : "rgba(var(--fg-rgb),0.5)" }}>{rotulo}</span>
               </button>
             );
           })}
@@ -1403,7 +1426,7 @@ function TelaPerfil({ utilizador, aoSair }) {
       <div className="mx-5">
         <button onClick={aoSair}
           className="w-full flex items-center justify-center gap-2 rounded-2xl py-4 font-semibold text-[14px] transition-transform active:scale-[0.97]"
-          style={{ background: "rgba(212,24,61,0.1)", border: "1px solid rgba(212,24,61,0.25)", color: "#f87171" }}>
+          style={{ background: "rgba(212,24,61,0.1)", border: "1px solid rgba(212,24,61,0.25)", color: "var(--accent-red)" }}>
           <LogOut size={16} /> Sair da conta
         </button>
       </div>
@@ -1422,14 +1445,14 @@ function BarraTabs({ abaAtiva, aoMudar }) {
   ];
 
   return (
-    <div className="flex px-2 py-2" style={{ background: "#06070f", borderTop: "1px solid rgba(255,255,255,0.07)" }}>
+    <div className="flex px-2 py-2" style={{ background: "var(--surface-elevated)", borderTop: "1px solid rgba(var(--fg-rgb),0.07)" }}>
       {abas.map(({ id, Icone, label }) => {
         const ativo = abaAtiva === id;
         return (
           <button key={id} onClick={() => aoMudar(id)}
             className="flex-1 flex flex-col items-center gap-1 py-1 transition-transform active:scale-90">
-            <Icone size={22} style={{ color: ativo ? "white" : "rgba(255,255,255,0.22)" }} />
-            <span className="text-[10px] font-semibold" style={{ color: ativo ? "white" : "rgba(255,255,255,0.22)" }}>
+            <Icone size={22} style={{ color: ativo ? "rgb(var(--fg-rgb))" : "rgba(var(--fg-rgb),0.3)" }} />
+            <span className="text-[10px] font-semibold" style={{ color: ativo ? "rgb(var(--fg-rgb))" : "rgba(var(--fg-rgb),0.3)" }}>
               {label}
             </span>
           </button>
@@ -1441,11 +1464,32 @@ function BarraTabs({ abaAtiva, aoMudar }) {
 
 // ── App ────────────────────────────────────────────────────────────────────────
 
+// ── Tema (Light / Dark / Predefinido no dispositivo) ────────────────────────
+
+const TEMA_PADRAO = "light"; // requisito: o padrão do app é sempre Light
+const CHAVE_TEMA = "servcasa_tema";
+
+function useTema() {
+  const [tema, setTemaEstado] = useState(() => localStorage.getItem(CHAVE_TEMA) || TEMA_PADRAO);
+
+  useEffect(() => {
+    document.documentElement.setAttribute("data-tema", tema);
+  }, [tema]);
+
+  function definirTema(novoTema) {
+    localStorage.setItem(CHAVE_TEMA, novoTema);
+    setTemaEstado(novoTema);
+  }
+
+  return [tema, definirTema];
+}
+
 export default function App() {
   const [utilizador, setUtilizador] = useState(() => obterUtilizadorGuardado());
   const [abaAtiva, setAbaAtiva] = useState("inicio");
   const [stack, setStack] = useState([]);
   const [minhaLocalizacao, setMinhaLocalizacao] = useState(null);
+  const [tema, definirTema] = useTema();
 
   // Ao autenticar, ativa o rastreio de localização (necessário para pedidos
   // próximos e para o check-in) e envia a posição ao servidor periodicamente.
@@ -1540,11 +1584,11 @@ export default function App() {
     if (abaAtiva === "inicio") return <TelaInicio utilizador={utilizador} aoAbrirPedido={p => empurrar("detalhe", { pedidoId: p.id })} />;
     if (abaAtiva === "mapa") return <TelaMapa aoAbrirPedido={p => empurrar("detalhe", { pedidoId: p.id })} />;
     if (abaAtiva === "historico") return <TelaHistorico />;
-    if (abaAtiva === "perfil") return <TelaPerfil utilizador={utilizador} aoSair={lidarComSair} />;
+    if (abaAtiva === "perfil") return <TelaPerfil utilizador={utilizador} aoSair={lidarComSair} tema={tema} definirTema={definirTema} />;
   }
 
   return (
-    <div className="flex flex-col" style={{ height: "100dvh", background: "#030213" }}>
+    <div className="flex flex-col" style={{ height: "100dvh", background: "var(--bg)" }}>
       <div className="flex-1 overflow-hidden">
         {renderTela()}
       </div>
