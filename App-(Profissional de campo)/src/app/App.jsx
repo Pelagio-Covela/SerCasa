@@ -283,7 +283,7 @@ function CardPedido({ pedido, aoTap, distancia }) {
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between mb-0.5 gap-2">
-            <span className="text-[rgb(var(--fg-rgb))] font-semibold text-[15px] truncate" style={{ lineHeight: 1.5 }}>{pedido.nome_cliente}</span>
+            <span className="text-[rgb(var(--fg-rgb))] font-semibold text-[15px] truncate" style={{ paddingBottom: 2 }}>{pedido.nome_cliente}</span>
             <Badge status={pedido.status} />
           </div>
           <div className="flex items-center gap-1 text-[12px] mb-1" style={{ color: "rgba(var(--fg-rgb),0.35)" }}>
@@ -563,7 +563,7 @@ function TelaDetalhePedido({ pedidoId, aoVoltar, aoCheckin, minhaLocalizacao }) 
               {EMOJI_CATEGORIA[pedido.categoria_id] || "🧰"}
             </div>
             <div className="flex-1">
-              <h3 className="text-[rgb(var(--fg-rgb))] font-bold text-[17px]" style={{ lineHeight: 1.5 }}>{pedido.nome_cliente}</h3>
+              <h3 className="text-[rgb(var(--fg-rgb))] font-bold text-[17px]" style={{ paddingBottom: 2 }}>{pedido.nome_cliente}</h3>
             </div>
             <Badge status={pedido.status} />
           </div>
@@ -590,7 +590,7 @@ function TelaDetalhePedido({ pedidoId, aoVoltar, aoCheckin, minhaLocalizacao }) 
           <div className="flex items-center justify-between">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-wide mb-0.5" style={{ color: "rgba(var(--fg-rgb),0.4)" }}>Cliente</p>
-              <p className="text-[rgb(var(--fg-rgb))] text-[15px] font-semibold" style={{ lineHeight: 1.5 }}>{pedido.nome_cliente}</p>
+              <p className="text-[rgb(var(--fg-rgb))] text-[15px] font-semibold" style={{ paddingBottom: 2 }}>{pedido.nome_cliente}</p>
               <p className="text-[13px]" style={{ color: "rgba(var(--fg-rgb),0.5)" }}>{pedido.telefone}</p>
             </div>
             {pedido.telefone && (
@@ -821,7 +821,7 @@ function TelaCheckin({ pedido, aoVoltar, aoConfirmar }) {
         </div>
 
         <div className="rounded-2xl p-4" style={{ background: "var(--surface-card)", border: "1px solid var(--surface-border)" }}>
-          <p className="text-[rgb(var(--fg-rgb))] font-semibold text-[15px] mb-1" style={{ lineHeight: 1.5 }}>{pedido.nome_cliente}</p>
+          <p className="text-[rgb(var(--fg-rgb))] font-semibold text-[15px] mb-1" style={{ paddingBottom: 2 }}>{pedido.nome_cliente}</p>
           <p className="flex items-center gap-1 text-[13px]" style={{ color: "rgba(var(--fg-rgb),0.5)" }}>
             <MapPin size={12} />{pedido.endereco}
           </p>
@@ -969,7 +969,7 @@ function TelaEmAndamento({ pedido, checkinHoraISO, aoCheckout }) {
           <div className="w-2 h-2 rounded-full animate-pulse" style={{ background: "var(--accent-blue)" }} />
           <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: "var(--accent-blue)" }}>Serviço em execução</p>
         </div>
-        <h2 className="text-[rgb(var(--fg-rgb))] text-[22px] font-bold" style={{ lineHeight: 1.5 }}>{pedido.nome_cliente}</h2>
+        <h2 className="text-[rgb(var(--fg-rgb))] text-[22px] font-bold" style={{ paddingBottom: 2 }}>{pedido.nome_cliente}</h2>
         <p className="text-[14px]" style={{ color: "rgba(var(--fg-rgb),0.5)" }}>{pedido.nome_categoria}</p>
       </div>
 
@@ -1102,7 +1102,7 @@ function TelaResumo({ pedido, checkinHoraISO, resultadoCheckout, aoVoltar }) {
       <div className="rounded-2xl overflow-hidden mb-4" style={{ background: "var(--surface-card)", border: "1px solid var(--surface-border)" }}>
         <div className="p-4 pb-3" style={{ borderBottom: "1px solid rgba(var(--fg-rgb),0.06)" }}>
           <p className="text-[11px] font-semibold uppercase tracking-wide mb-0.5" style={{ color: "rgba(var(--fg-rgb),0.4)" }}>Serviço</p>
-          <p className="text-[rgb(var(--fg-rgb))] font-semibold text-[15px]" style={{ lineHeight: 1.5 }}>{pedido.nome_cliente} · {pedido.nome_categoria}</p>
+          <p className="text-[rgb(var(--fg-rgb))] font-semibold text-[15px]" style={{ paddingBottom: 2 }}>{pedido.nome_cliente} · {pedido.nome_categoria}</p>
           <p className="text-[13px]" style={{ color: "rgba(var(--fg-rgb),0.5)" }}>{formatarData(pedido.data)}</p>
         </div>
         <div className="grid grid-cols-2" style={{ borderBottom: "1px solid rgba(var(--fg-rgb),0.06)" }}>
@@ -1191,7 +1191,7 @@ function TelaMapa({ aoAbrirPedido }) {
                 {EMOJI_CATEGORIA[p.categoria_id] || "🧰"}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-[rgb(var(--fg-rgb))] text-[14px] font-semibold truncate" style={{ lineHeight: 1.5 }}>{p.nome_cliente}</p>
+                <p className="text-[rgb(var(--fg-rgb))] text-[14px] font-semibold truncate" style={{ paddingBottom: 2 }}>{p.nome_cliente}</p>
                 <p className="text-[12px] truncate" style={{ color: "rgba(var(--fg-rgb),0.4)" }}>{p.endereco}</p>
               </div>
               <div className="text-right flex-shrink-0 flex flex-col items-end gap-1">
@@ -1268,7 +1268,7 @@ function TelaHistorico() {
               <div key={h.id} className="rounded-2xl p-4 mb-3" style={{ background: "var(--surface-card)", border: "1px solid var(--surface-border)" }}>
                 <div className="flex items-start justify-between mb-3">
                   <div>
-                    <p className="text-[rgb(var(--fg-rgb))] font-semibold text-[15px]" style={{ lineHeight: 1.5 }}>{h.nome_cliente}</p>
+                    <p className="text-[rgb(var(--fg-rgb))] font-semibold text-[15px]" style={{ paddingBottom: 2 }}>{h.nome_cliente}</p>
                     <p className="text-[13px]" style={{ color: "rgba(var(--fg-rgb),0.5)" }}>{h.nome_categoria} · {formatarData(h.data)}</p>
                   </div>
                   <div className="text-right">
@@ -1371,7 +1371,7 @@ function TelaPerfil({ utilizador, aoSair, tema, definirTema }) {
         {[["E-mail", utilizador?.email], ["Telefone", perfil?.telefone || "—"]].map(([label, val], i) => (
           <div key={label} className="p-4" style={i > 0 ? { borderTop: "1px solid rgba(var(--fg-rgb),0.06)" } : {}}>
             <p className="text-[11px] font-semibold uppercase tracking-wide mb-0.5" style={{ color: "rgba(var(--fg-rgb),0.4)" }}>{label}</p>
-            <p className="text-[rgb(var(--fg-rgb))] text-[14px] break-all" style={{ lineHeight: 1.5 }}>{val}</p>
+            <p className="text-[rgb(var(--fg-rgb))] text-[14px] break-all" style={{ paddingBottom: 2 }}>{val}</p>
           </div>
         ))}
       </div>
